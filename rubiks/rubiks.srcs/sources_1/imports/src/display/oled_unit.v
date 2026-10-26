@@ -14,6 +14,7 @@ module oled_unit (
     output [7:0] oled_pmod // Pmod OLED pins
 );
 `include "cube_defs.vh"
+`include "glyphs.vh"
 
     wire my_fb;
     wire [12:0] my_pixel_index; //the oled module will keep changing this number

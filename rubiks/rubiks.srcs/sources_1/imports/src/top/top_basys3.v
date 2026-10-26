@@ -23,6 +23,7 @@ module top_basys3 (
     /* GLOBAL WIRES */
     wire rst;
 
+/* IO MODULES START */
     wire [9:0] mouse_x;
     wire [9:0] mouse_y;
     wire mouse_l;
@@ -38,22 +39,32 @@ module top_basys3 (
         .mouse_dx(mouse_dx), .mouse_dy(mouse_dy),
         .mouse_event(mouse_event)
     );
-
-    assign led[0] = mouse_l;
-    assign led[1] = mouse_m;
-    assign led[2] = mouse_r;
-
+    
+    // BUTTONS: C U L R D
+    wire [4:0] btn_held;
+    wire [4:0] btn_pressed;
+    button_unit button_unit (
+        .debugled(led[13]),
+        .clk(clk),
+        .btn_raw({btnC, btnU, btnL, btnR, btnD}),
+        .btn_held(btn_held),
+        .btn_pressed(btn_pressed)
+    );
+/* IO MODULES END */
 
 /* CLOCKS START */
 /* CLOCKS END */
-
-/* IO MODULES START */
-
-/* IO MODULES END */
 
 
 /* LOGIC MODULES START */
 
 /* LOGIC MODULES END */
+
+/* TEST STUFF */
+    assign led[0] = mouse_l;
+    assign led[1] = mouse_m;
+    assign led[2] = mouse_r;
+    assign led[4] = btn_pressed[4];
+    assign led[5] = btn_held[4];
 
 endmodule
