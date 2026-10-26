@@ -1,0 +1,266 @@
+Module port lists (source of truth for every module's ports)
+Widths are written as plain numbers because cube_defs.vh is included after the port list.
+
+# src/top/top_basys3.v
+module top_basys3 (
+    input wire clk,
+    input wire btnC, btnU, btnL, btnR, btnD,
+    input wire [15:0] sw,
+    output wire [15:0] led,
+    output wire [6:0] seg,
+    output wire dp,
+    output wire [3:0] an,
+    output wire [3:0] vgaRed, vgaGreen, vgaBlue,
+    output wire Hsync, Vsync,
+    inout wire PS2Clk, PS2Data,
+    output wire [7:0] JC // OLED Pmod
+);
+
+# src/top/tick_gen.v
+module tick_gen #(
+    parameter SLOW_DIV = 25_000_000 // 4 Hz move playback
+)(
+    input wire clk, // 100 MHz
+    input wire rst,
+    input wire en_slow, // 0 = slow counter held at 0 (stopped)
+    output wire tick_25m, // every 4 clks, VGA pixel enable
+    output wire tick_1k, // every 1 ms, debounce / 7-seg / blink
+    output wire tick_slow, // every SLOW_DIV clks, move playback
+    output wire clk6p25m // real clock for Oled_Display
+);
+
+# src/inputs/button_unit.v
+module button_unit (
+    input wire clk,
+    input wire rst,
+    input wire tick_1k,
+    input wire [4:0] btn_raw, // {C, U, L, R, D}, index with BTN_*
+    output wire [4:0] btn_level, // debounced, high while held
+    output wire [4:0] btn_pulse // 1-cycle pulse per press (200 ms lockout)
+);
+
+# src/inputs/mouse_unit.v
+module mouse_unit (
+    input wire clk, // 100 MHz
+    input wire rst,
+    inout wire ps2_clk,
+    inout wire ps2_data,
+    output wire [9:0] mouse_x, // 0..639
+    output wire [9:0] mouse_y, // 0..479
+    output wire left, middle, right, // button levels
+    output wire signed [10:0] dx, // movement since last event
+    output wire signed [10:0] dy,
+    output wire new_event // 1-cycle pulse per mouse packet
+);
+
+# src/inputs/switch_unit.v
+module switch_unit (
+    input wire clk,
+    input wire [15:0] sw_raw,
+    output wire [15:0] sw
+);
+
+# src/logic/game_fsm.v
+module game_fsm (
+    input wire clk,
+    input wire rst,
+    input wire [4:0] btn_pulse,
+    input wire [15:0] sw,
+    input wire m_left,
+    input wire cursor_on_cube,
+    input wire [4:0] cursor_tile,
+    input wire [71:0] cube, // e.g. compare with CUBE_SOLVED
+    input wire cube_valid, // from cube_encode
+    input wire [2:0] enc_err,
+    input wire scramble_done,
+    input wire solve_done,
+    input wire solve_err,
+    output wire [2:0] stage, // ST_*
+    output wire [1:0] menu_sel, // highlighted menu item
+    output wire slow_en, // runs tick_slow in ST_SCRAMBLING / ST_SOLVING
+    output wire manual_en, // manual turns allowed
+    output wire scramble_start, // 1-cycle pulse
+    output wire solve_start, // 1-cycle pulse, only if cube_valid
+    output wire solve_cancel,
+    output wire cube_reset, // 1-cycle pulse, cube back to solved
+    output wire paint_en, // 1-cycle pulse, write paint_colour into paint_tile
+    output wire [4:0] paint_tile,
+    output wire [2:0] paint_colour, // currently selected palette colour
+    output wire [2:0] err_code // ERR_*, shown in ST_ERROR
+);
+
+# src/logic/move_controller.v
+module move_controller (
+    input wire clk,
+    input wire rst,
+    input wire [2:0] stage,
+    input wire manual_en,
+    input wire [4:0] btn_pulse,
+    input wire [15:0] sw, // e.g. sw[2:0] selects face
+    input wire [4:0] scr_move,
+    input wire scr_valid,
+    input wire [4:0] sol_move,
+    input wire sol_valid,
+    output wire [4:0] move_req, // MV_*
+    output wire move_valid // 1-cycle, at most one move per cycle
+);
+
+# src/logic/cube_engine.v
+module cube_engine (
+    input wire clk,
+    input wire rst,
+    input wire cube_reset,
+    input wire [4:0] move_req,
+    input wire move_valid,
+    input wire paint_en,
+    input wire [4:0] paint_tile,
+    input wire [2:0] paint_colour,
+    output wire [71:0] cube,
+    output wire [7:0] move_count // moves applied since last reset
+);
+
+# src/logic/move_rules.v
+module move_rules (
+    input wire [71:0] cube_in,
+    input wire [4:0] move,
+    output wire [71:0] cube_out // MV_NONE / invalid = unchanged
+);
+
+# src/logic/scrambler.v
+module scrambler #(
+    parameter N_SCRAMBLE = 25
+)(
+    input wire clk,
+    input wire rst,
+    input wire start, // 1-cycle pulse from game_fsm
+    input wire tick_slow,
+    output wire [4:0] scr_move,
+    output wire scr_valid, // 1-cycle, on tick_slow
+    output wire busy,
+    output wire scramble_done // 1-cycle pulse after last move
+);
+
+# src/logic/cube_encode.v
+module cube_encode (
+    input wire clk,
+    input wire [71:0] cube,
+    output wire [12:0] perm_idx, // 0..5039
+    output wire [9:0] ori_idx, // 0..728
+    output wire cube_valid,
+    output wire [2:0] err_code // ERR_NONE / ERR_COLOUR_COUNT / ERR_BAD_CORNER / ERR_TWIST
+);
+
+# src/logic/solver.v
+module solver (
+    input wire clk,
+    input wire rst,
+    input wire start, // 1-cycle pulse, samples perm_idx / ori_idx
+    input wire cancel,
+    input wire tick_slow, // playback rate
+    input wire [12:0] perm_idx,
+    input wire [9:0] ori_idx,
+    output wire [4:0] sol_move,
+    output wire sol_valid, // 1-cycle per played move
+    output wire busy,
+    output wire solve_done, // 1-cycle pulse after last move played
+    output wire solve_err, // watchdog / cancel
+    output wire [3:0] sol_len, // length of found solution
+    output wire [3:0] progress // moves played so far
+);
+
+# src/logic/camera_unit.v
+module camera_unit (
+    input wire clk,
+    input wire rst,
+    input wire [2:0] stage,
+    input wire [15:0] sw,
+    input wire [4:0] btn_pulse,
+    input wire m_left,
+    input wire signed [10:0] dx,
+    input wire signed [10:0] dy,
+    input wire new_event,
+    output wire [4:0] view_idx // {pitch, yaw} index into view_rom
+);
+
+# src/render/cube_renderer.v
+module cube_renderer (
+    input wire clk,
+    input wire rst,
+    input wire pix_en, // tick_25m
+    input wire frame_start, // 1-cycle at start of vblank, snapshot the 12 quads here
+    input wire [4:0] view_idx,
+    input wire [71:0] cube,
+    input wire [9:0] px, py,
+    input wire [9:0] mouse_x, mouse_y,
+    output wire [8:0] rom_addr,
+    input wire [84:0] rom_data,
+    output wire [2:0] pix_colour, // colour code, vga_unit maps to RGB
+    output wire pix_on_cube,
+    output wire [4:0] cursor_tile, // sticker under mouse, TILE_NONE if none
+    output wire cursor_on_cube
+);
+
+# src/render/view_rom.v
+module view_rom (
+    input wire clk,
+    input wire [8:0] addr, // {view_idx[4:0], slot[3:0]}
+    output wire [84:0] data // {tile_id, x0,y0, x1,y1, x2,y2, x3,y3}, tile_id = TILE_NONE means empty
+);
+
+# src/outputs/vga_unit.v
+module vga_unit #(
+    parameter RENDER_LAT = 2 // must match cube_renderer pipeline depth
+)(
+    input wire clk,
+    input wire rst,
+    input wire pix_en, // tick_25m
+    input wire [2:0] pix_colour,
+    input wire pix_on_cube,
+    input wire [9:0] mouse_x, mouse_y,
+    input wire [2:0] stage,
+    input wire [2:0] sel_colour, // highlighted palette colour
+    output wire [9:0] px, py, // current pixel, to renderer
+    output wire frame_start, // 1-cycle at start of vblank
+    output wire Hsync, Vsync,
+    output wire [3:0] vgaRed, vgaGreen, vgaBlue
+);
+
+# src/outputs/oled_unit.v
+module oled_unit (
+    input wire clk,
+    input wire clk6p25m,
+    input wire rst,
+    input wire [2:0] stage,
+    input wire [71:0] cube, // for the 2D net view
+    input wire [2:0] sel_colour,
+    input wire [2:0] err_code,
+    input wire [3:0] progress,
+    input wire [3:0] sol_len,
+    output wire [7:0] oled // to Pmod header
+);
+
+# src/outputs/led_unit.v
+module led_unit (
+    input wire clk,
+    input wire rst,
+    input wire tick_1k, // count for blink rate
+    input wire [2:0] stage,
+    input wire [3:0] progress,
+    input wire [3:0] sol_len,
+    input wire [2:0] err_code,
+    output wire [15:0] led
+);
+
+# src/outputs/anode_unit.v
+module anode_unit (
+    input wire clk,
+    input wire rst,
+    input wire tick_1k,
+    input wire [2:0] stage,
+    input wire [1:0] menu_sel,
+    input wire [7:0] move_count,
+    input wire [3:0] sol_len,
+    output wire [6:0] seg, // active low
+    output wire dp, // active low
+    output wire [3:0] an // active low
+);
