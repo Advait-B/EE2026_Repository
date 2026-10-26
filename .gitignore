@@ -1,22 +1,11 @@
-# Vivado generated files
-*.cache/
-*.hw/
-*.ip_user_files/
-*.runs/
-*.sim/
-*.gen/
-.Xil/
+# Vivado
 *.jou
 *.log
 *.str
-*.wdb
-vivado*.backup.*
-webtalk*
-
-# Simulation outputs
-*.vvp
-*.vcd
-
-# Python
-__pycache__/
-*.pyc
+.Xil/
+*.cache/
+*.hw/
+*.runs/
+*.sim/
+*.ip_user_files/
+*.gen/
