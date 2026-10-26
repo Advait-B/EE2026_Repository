@@ -7,7 +7,7 @@
 <Project Product="Vivado" Version="7" Minor="71" Path="C:/NUS/ee2026/PROJECT/githubrepo/EE2026/rubiks/rubiks.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
-    <Option Name="Id" Val="9ffa16f03c934635aaa512f020452b16"/>
+    <Option Name="Id" Val="8959b64e87e644248c8cc3ca6ab11463"/>
     <Option Name="Part" Val="xc7a35tcpg236-1"/>
     <Option Name="CompiledLibDir" Val="$PCACHEDIR/compile_simlib"/>
     <Option Name="CompiledLibDirXSim" Val=""/>
@@ -89,6 +89,16 @@
   <FileSets Version="1" Minor="32">
     <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1" RelGenDir="$PGENDIR/sources_1">
       <Filter Type="Srcs"/>
+      <File Path="$PSRCDIR/sources_1/imports/src/display/anode_unit.v">
+        <FileInfo>
+          <Attr Name="AutoDisabled" Val="1"/>
+          <Attr Name="ImportPath" Val="$PPRDIR/../src/display/anode_unit.v"/>
+          <Attr Name="ImportTime" Val="1792342434"/>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PSRCDIR/sources_1/imports/src/input/button_unit.v">
         <FileInfo>
           <Attr Name="AutoDisabled" Val="1"/>
@@ -143,16 +153,6 @@
         <FileInfo>
           <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="ImportPath" Val="$PPRDIR/../src/display/led_unit.v"/>
-          <Attr Name="ImportTime" Val="1792342434"/>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <File Path="$PSRCDIR/sources_1/imports/src/input/mouse_unit.v">
-        <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
-          <Attr Name="ImportPath" Val="$PPRDIR/../src/input/mouse_unit.v"/>
           <Attr Name="ImportTime" Val="1792342434"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -249,11 +249,11 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PSRCDIR/sources_1/imports/src/display/anode_unit.v">
+      <File Path="$PSRCDIR/sources_1/imports/temp/Oled_Display.v">
         <FileInfo>
           <Attr Name="AutoDisabled" Val="1"/>
-          <Attr Name="ImportPath" Val="$PPRDIR/../src/display/anode_unit.v"/>
-          <Attr Name="ImportTime" Val="1792342434"/>
+          <Attr Name="ImportPath" Val="$PPRDIR/../../../temp/Oled_Display.v"/>
+          <Attr Name="ImportTime" Val="1790577114"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -268,10 +268,35 @@
           <Attr Name="IsVisible" Val="1"/>
         </FileInfo>
       </File>
+      <File Path="$PSRCDIR/sources_1/imports/src/input/mouse_unit.v">
+        <FileInfo>
+          <Attr Name="ImportPath" Val="$PPRDIR/../src/input/mouse_unit.v"/>
+          <Attr Name="ImportTime" Val="1792345230"/>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PSRCDIR/sources_1/imports/temp/Mouse_Control.vhd">
+        <FileInfo>
+          <Attr Name="ImportPath" Val="$PPRDIR/../../../temp/Mouse_Control.vhd"/>
+          <Attr Name="ImportTime" Val="1790577114"/>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PSRCDIR/sources_1/imports/temp/Ps2Interface.vhd">
+        <FileInfo>
+          <Attr Name="ImportPath" Val="$PPRDIR/../../../temp/Ps2Interface.vhd"/>
+          <Attr Name="ImportTime" Val="1790577114"/>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PSRCDIR/sources_1/imports/src/top/top_basys3.v">
         <FileInfo>
           <Attr Name="ImportPath" Val="$PPRDIR/../src/top/top_basys3.v"/>
-          <Attr Name="ImportTime" Val="1792342434"/>
+          <Attr Name="ImportTime" Val="1792344748"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -299,7 +324,7 @@
     <FileSet Name="sim_1" Type="SimulationSrcs" RelSrcDir="$PSRCDIR/sim_1" RelGenDir="$PGENDIR/sim_1">
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
-        <Option Name="TopModule" Val="anode_unit"/>
+        <Option Name="TopModule" Val="oled_unit"/>
         <Option Name="TopLib" Val="xil_defaultlib"/>
         <Option Name="TopAutoSet" Val="TRUE"/>
         <Option Name="TransportPathDelay" Val="0"/>

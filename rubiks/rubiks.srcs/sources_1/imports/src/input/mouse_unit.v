@@ -14,6 +14,19 @@ module mouse_unit (
     output mouse_event // 1-cycle pulse per new packet
 );
 `include "cube_defs.vh"
-asd
+
+    MouseCtl mouse_helper ( // given mouse code
+        .clk(clk),.rst(rst),.new_event(mouse_event),
+        .ps2_clk(ps2_clk),.ps2_data(ps2_data),
+        .value(0),.setx(0),.sety(0),
+        
+        .setmax_x(0), //might have to set this
+        .setmax_y(0), //might have to set this
+        
+        .xpos(mouse_x),.ypos(mouse_y),
+        .left(mouse_l),.right(mouse_r),.middle(mouse_m)   
+    );
+    
+    
 
 endmodule
