@@ -118,12 +118,13 @@
     // -----------------------------------------------------------------
     // Game stages [2:0]
     // -----------------------------------------------------------------
-    localparam [2:0] ST_MENU       = 3'd0;
-    localparam [2:0] ST_FREE       = 3'd1;
-    localparam [2:0] ST_SCRAMBLING = 3'd2;
-    localparam [2:0] ST_SOLVING    = 3'd3;
-    localparam [2:0] ST_SOLVED     = 3'd4;
-    localparam [2:0] ST_ERROR      = 3'd5;   // solver failed or timed out
+    localparam [2:0] ST_START           = 3'd0;
+    localparam [2:0] ST_AUTO_SCRAMBLE   = 3'd1;
+    localparam [2:0] ST_MANUAL_SCRAMBLE = 3'd2;
+    localparam [2:0] ST_SCRAMBLED       = 3'd3;
+    localparam [2:0] ST_SOLVING         = 3'd4;
+    localparam [2:0] ST_SOLVED          = 3'd5;
+    localparam [2:0] ST_ERROR           = 3'd6;   // solver failed or timed out
 
     // -----------------------------------------------------------------
     // Button bit positions in btn[4:0] = {C, U, L, R, D}
@@ -236,6 +237,198 @@
 
     function automatic move_is_valid(input [4:0] m);
         move_is_valid = (m < N_MOVES);
+    endfunction
+
+    // -----------------------------------------------------------------
+    // Shared sticker-turn mapping
+    // -----------------------------------------------------------------
+    // A sticker is identified by its face and tile.  The position below
+    // stores the corner coordinates as {x,y,z}, with 1 = positive and
+    // 0 = negative.  Coordinates use R=+x, U=+y, F=+z.  Tile order on
+    // each face follows the clockwise numbering in the net above.
+    function automatic [2:0] sticker_position(input [4:0] s);
+        reg [2:0] face;
+        reg [1:0] tile;
+        begin
+            face = s / 4;
+            tile = s % 4;
+            case (face)
+                FACE_U: case (tile)
+                    2'd0: sticker_position = 3'b010;
+                    2'd1: sticker_position = 3'b110;
+                    2'd2: sticker_position = 3'b111;
+                    default: sticker_position = 3'b011;
+                endcase
+                FACE_R: case (tile)
+                    2'd0: sticker_position = 3'b111;
+                    2'd1: sticker_position = 3'b110;
+                    2'd2: sticker_position = 3'b100;
+                    default: sticker_position = 3'b101;
+                endcase
+                FACE_F: case (tile)
+                    2'd0: sticker_position = 3'b011;
+                    2'd1: sticker_position = 3'b111;
+                    2'd2: sticker_position = 3'b101;
+                    default: sticker_position = 3'b001;
+                endcase
+                FACE_D: case (tile)
+                    2'd0: sticker_position = 3'b001;
+                    2'd1: sticker_position = 3'b101;
+                    2'd2: sticker_position = 3'b100;
+                    default: sticker_position = 3'b000;
+                endcase
+                FACE_L: case (tile)
+                    2'd0: sticker_position = 3'b010;
+                    2'd1: sticker_position = 3'b011;
+                    2'd2: sticker_position = 3'b001;
+                    default: sticker_position = 3'b000;
+                endcase
+                default: case (tile) // FACE_B
+                    2'd0: sticker_position = 3'b110;
+                    2'd1: sticker_position = 3'b010;
+                    2'd2: sticker_position = 3'b000;
+                    default: sticker_position = 3'b100;
+                endcase
+            endcase
+        end
+    endfunction
+
+    // Recover a tile number from its face and corner position.
+    function automatic [1:0] sticker_tile_at_position(input [2:0] face,
+                                                       input [2:0] pos);
+        begin
+            sticker_tile_at_position = 2'd0;
+            case (face)
+                FACE_U: case (pos)
+                    3'b010: sticker_tile_at_position = 2'd0;
+                    3'b110: sticker_tile_at_position = 2'd1;
+                    3'b111: sticker_tile_at_position = 2'd2;
+                    3'b011: sticker_tile_at_position = 2'd3;
+                endcase
+                FACE_R: case (pos)
+                    3'b111: sticker_tile_at_position = 2'd0;
+                    3'b110: sticker_tile_at_position = 2'd1;
+                    3'b100: sticker_tile_at_position = 2'd2;
+                    3'b101: sticker_tile_at_position = 2'd3;
+                endcase
+                FACE_F: case (pos)
+                    3'b011: sticker_tile_at_position = 2'd0;
+                    3'b111: sticker_tile_at_position = 2'd1;
+                    3'b101: sticker_tile_at_position = 2'd2;
+                    3'b001: sticker_tile_at_position = 2'd3;
+                endcase
+                FACE_D: case (pos)
+                    3'b001: sticker_tile_at_position = 2'd0;
+                    3'b101: sticker_tile_at_position = 2'd1;
+                    3'b100: sticker_tile_at_position = 2'd2;
+                    3'b000: sticker_tile_at_position = 2'd3;
+                endcase
+                FACE_L: case (pos)
+                    3'b010: sticker_tile_at_position = 2'd0;
+                    3'b011: sticker_tile_at_position = 2'd1;
+                    3'b001: sticker_tile_at_position = 2'd2;
+                    3'b000: sticker_tile_at_position = 2'd3;
+                endcase
+                FACE_B: case (pos)
+                    3'b110: sticker_tile_at_position = 2'd0;
+                    3'b010: sticker_tile_at_position = 2'd1;
+                    3'b000: sticker_tile_at_position = 2'd2;
+                    3'b100: sticker_tile_at_position = 2'd3;
+                endcase
+            endcase
+        end
+    endfunction
+
+    // Destination sticker for one source sticker under a move.  Rotating
+    // coordinates about the selected face normal makes this the single
+    // definition of the sticker permutation for all 18 move codes.
+    // Invalid move codes leave the sticker where it is.
+    function automatic [4:0] move_sticker_dest(input [4:0] m,
+                                               input [4:0] src);
+        integer x, y, z;
+        integer nx, ny, nz;
+        integer ax, ay, az;
+        integer dotp, ndotp;
+        integer x2, y2, z2;
+        integer nx2, ny2, nz2;
+        reg [2:0] pos;
+        reg [2:0] old_face;
+        reg [2:0] new_face;
+        reg [2:0] pos2;
+        begin
+            move_sticker_dest = src;
+            if (move_is_valid(m)) begin
+                pos = sticker_position(src);
+                x = pos[2] ? 1 : -1;
+                y = pos[1] ? 1 : -1;
+                z = pos[0] ? 1 : -1;
+
+                old_face = src / 4;
+                nx = 0; ny = 0; nz = 0;
+                case (old_face)
+                    FACE_U: ny = 1;
+                    FACE_R: nx = 1;
+                    FACE_F: nz = 1;
+                    FACE_D: ny = -1;
+                    FACE_L: nx = -1;
+                    default: nz = -1; // FACE_B
+                endcase
+
+                ax = 0; ay = 0; az = 0;
+                case (move_face(m))
+                    FACE_U: ay = 1;
+                    FACE_R: ax = 1;
+                    FACE_F: az = 1;
+                    FACE_D: ay = -1;
+                    FACE_L: ax = -1;
+                    default: az = -1; // FACE_B
+                endcase
+
+                dotp = x*ax + y*ay + z*az;
+                if (dotp == 1) begin
+                    ndotp = nx*ax + ny*ay + nz*az;
+                    case (move_type(m))
+                        TURN_CW: begin // -90 degrees about the outward normal
+                            x2 = ax*dotp - (ay*z - az*y);
+                            y2 = ay*dotp - (az*x - ax*z);
+                            z2 = az*dotp - (ax*y - ay*x);
+                            nx2 = ax*ndotp - (ay*nz - az*ny);
+                            ny2 = ay*ndotp - (az*nx - ax*nz);
+                            nz2 = az*ndotp - (ax*ny - ay*nx);
+                        end
+                        TURN_CCW: begin // +90 degrees about the outward normal
+                            x2 = ax*dotp + (ay*z - az*y);
+                            y2 = ay*dotp + (az*x - ax*z);
+                            z2 = az*dotp + (ax*y - ay*x);
+                            nx2 = ax*ndotp + (ay*nz - az*ny);
+                            ny2 = ay*ndotp + (az*nx - ax*nz);
+                            nz2 = az*ndotp + (ax*ny - ay*nx);
+                        end
+                        default: begin // 180 degrees
+                            x2 = 2*ax*dotp - x;
+                            y2 = 2*ay*dotp - y;
+                            z2 = 2*az*dotp - z;
+                            nx2 = 2*ax*ndotp - nx;
+                            ny2 = 2*ay*ndotp - ny;
+                            nz2 = 2*az*ndotp - nz;
+                        end
+                    endcase
+
+                    if (nx2 == 1) new_face = FACE_R;
+                    else if (nx2 == -1) new_face = FACE_L;
+                    else if (ny2 == 1) new_face = FACE_U;
+                    else if (ny2 == -1) new_face = FACE_D;
+                    else if (nz2 == 1) new_face = FACE_F;
+                    else new_face = FACE_B;
+
+                    pos2[2] = (x2 > 0);
+                    pos2[1] = (y2 > 0);
+                    pos2[0] = (z2 > 0);
+                    move_sticker_dest = sticker_idx(
+                        new_face, sticker_tile_at_position(new_face, pos2));
+                end
+            end
+        end
     endfunction
 
     // same face (used by scrambler/solver to avoid U then U')
