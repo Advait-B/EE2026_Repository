@@ -11,6 +11,8 @@
 * `src/render/`: view ROM and cube renderer
 * `src/outputs/`: VGA, OLED, LEDs, 7-segment
 * `docs/module_ports.txt`: port list of every module
+* `docs/context.md`: course rules, team roles and design decisions (read this first)
+* `docs/project_manual.pdf`, `docs/gpt6_proposal.pdf`: original course manual and proposal
 
 ## Language
 
