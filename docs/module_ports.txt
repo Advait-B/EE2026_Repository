@@ -119,6 +119,14 @@ module solver(
     output [3:0] moves_left // solution moves remaining
 );
 
+module pattern_rom(
+    input clk, // 100 MHz clock
+    input [11:0] ori_addr, // orientation coordinate, 0-2186
+    input [15:0] perm_addr, // permutation coordinate, 0-40319
+    output reg [3:0] ori_dist, // moves to fix corner twists, 1 cycle after ori_addr
+    output reg [3:0] perm_dist // moves to fix corner positions, 1 cycle after perm_addr
+);
+
 module camera_unit(
     input clk, // 100 MHz clock
     input rst, // reset
