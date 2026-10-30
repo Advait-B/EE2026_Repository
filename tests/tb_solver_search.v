@@ -3,7 +3,7 @@
 // Self-checking testbench for solver_search (task 5.3).
 // Each test cube's plan is applied with move_rules and must leave the cube
 // solved, using exactly the expected (shortest) number of moves.
-// Cubes and lengths come from python/solver.py: solved, 1-3 move and 25-move scrambles.
+// Cubes and lengths come from Python/solver.py: solved, 1-3 move and 25-move scrambles.
 
 module tb_solver_search;
 `include "cube_defs.vh"
