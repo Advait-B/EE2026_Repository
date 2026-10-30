@@ -65,6 +65,30 @@
     localparam N_FACES    = 6;
     localparam N_MOVES    = 18;
     localparam N_CORNERS  = 8;
+    // -----------------------------------------------------------------
+    // Camera angle, projection, and cube rotation IDs
+    // -----------------------------------------------------------------
+    localparam CAMERA_ANGLE_ID_W    = 8;
+    localparam CAMERA_ANGLE_BIN_W   = 4;
+    localparam PROJECTION_ID_W     = 5;
+    localparam PROJECTION_COUNT    = 28;
+    localparam CUBE_ROTATION_ID_W  = 5;
+    localparam CUBE_ROTATION_COUNT = 24;
+    localparam CAMERA_YAW_STEPS    = 16;
+    localparam CAMERA_PITCH_STEPS  = 16;
+    localparam CAMERA_ANGLE_COUNT  = 256;
+
+    function automatic [3:0] camera_angle_yaw_bin(
+        input [CAMERA_ANGLE_ID_W-1:0] camera_angle_id
+    );
+        camera_angle_yaw_bin = camera_angle_id[3:0];
+    endfunction
+
+    function automatic [3:0] camera_angle_pitch_bin(
+        input [CAMERA_ANGLE_ID_W-1:0] camera_angle_id
+    );
+        camera_angle_pitch_bin = camera_angle_id[7:4];
+    endfunction
 
     // -----------------------------------------------------------------
     // Clock and tick dividers  (counts of 100 MHz cycles)
