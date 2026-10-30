@@ -1,4 +1,4 @@
-"""Enumerate cube rotations and map canonical stickers to live cube slots."""
+"""Enumerate cube rotations and map reference stickers to live cube slots."""
 
 from itertools import permutations, product
 
@@ -84,12 +84,12 @@ def cube_rotations():
     return ordered
 
 
-def sticker_surface(canonical_sticker_id):
+def sticker_surface(reference_sticker_id):
     """Return a sticker's outward normal and center in cube coordinates."""
-    if not 0 <= canonical_sticker_id < CUBE_STICKER_COUNT:
-        raise ValueError(f"Invalid canonical sticker ID {canonical_sticker_id}.")
+    if not 0 <= reference_sticker_id < CUBE_STICKER_COUNT:
+        raise ValueError(f"Invalid reference sticker ID {reference_sticker_id}.")
 
-    face, tile = divmod(canonical_sticker_id, 4)
+    face, tile = divmod(reference_sticker_id, 4)
     normal, right, up = FACES[face]
     u, v = TILE_UV[tile]
     center = add(normal, add(scale(right, u), scale(up, v)))
@@ -116,11 +116,11 @@ def sticker_id_at_surface(normal, center):
 
 
 def rotation_sticker_map(rotation):
-    """Map each canonical sticker ID to its live cube-state sticker index."""
+    """Map each reference sticker ID to its live cube-state sticker index."""
     inverse = transpose(rotation)
     mapping = []
-    for canonical_sticker_id in range(CUBE_STICKER_COUNT):
-        normal, center = sticker_surface(canonical_sticker_id)
+    for reference_sticker_id in range(CUBE_STICKER_COUNT):
+        normal, center = sticker_surface(reference_sticker_id)
         live_normal = mat_vec(inverse, normal)
         live_center = mat_vec(inverse, center)
         mapping.append(sticker_id_at_surface(live_normal, live_center))
@@ -131,7 +131,7 @@ def rotation_sticker_map(rotation):
 
 
 def cube_rotation_sticker_maps(rotations=None):
-    """Return the 24 canonical-to-live sticker maps in rotation ID order."""
+    """Return the 24 reference-to-live sticker maps in rotation ID order."""
     rotations = cube_rotations() if rotations is None else list(rotations)
     if len(rotations) != 24:
         raise ValueError(f"Expected 24 rotations, got {len(rotations)}.")

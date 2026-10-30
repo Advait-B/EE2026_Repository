@@ -145,7 +145,7 @@ module cube_layout_rom(
 The angle decoder table has 256 entries. Each 10-bit entry is
 {projection_id[4:0], cube_rotation_id[4:0]}; projection IDs are 0-27 and
 rotation IDs are 0-23. Each projection has 12 visible sticker slots ordered
-front to back, so slot 0 is the frontmost. The table stores canonical sticker
+front to back, so slot 0 is the frontmost. The table stores reference sticker
 IDs; cube_layout_rom remaps them to the actual sticker indices used by cube.
 ID 31 marks an empty slot.
 
