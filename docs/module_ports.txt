@@ -127,31 +127,57 @@ module camera_unit(
     input mouse_l, // left button held (drag)
     input signed [8:0] mouse_dx, mouse_dy, // movement this packet
     input mouse_event, // new mouse packet
-    output [6:0] view // current camera angle index
+    output [7:0] camera_angle_id // {pitch_bin[3:0], yaw_bin[3:0]}, 0-255
 );
 
-module view_rom(
+Camera-angle IDs form a 16-by-16 grid. Bits [3:0] are the yaw bin and bits
+[7:4] are the pitch bin. Each bin ranges from 0 to 15.
+
+module cube_layout_rom(
     input clk, // 100 MHz clock
-    input [6:0] view, // camera angle index
-    input [3:0] slot, // visible sticker slot, 0-11, front-to-back
-    output [4:0] sticker_id, // which sticker is in this slot
-    output [79:0] quad // 4 projected corners {x3,y3,x2,y2,x1,y1,x0,y0}, 10 bits each
+    input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
+    input [3:0] visible_sticker_slot, // requested depth-ordered slot, 0-11
+    output [4:0] actual_sticker_id, // live cube sticker index, or 31 for empty
+    output [79:0] sticker_corner_coords, // four {x[9:0], y[9:0]} corners
+    output [107:0] sticker_edge_slopes // four signed 27-bit Q16 slopes
 );
+
+The angle decoder table has 256 entries. Each 10-bit entry is
+{projection_id[4:0], cube_rotation_id[4:0]}; projection IDs are 0-27 and
+rotation IDs are 0-23. Each projection has 12 visible sticker slots ordered
+front to back, so slot 0 is the frontmost. The table stores canonical sticker
+IDs; cube_layout_rom remaps them to the actual sticker indices used by cube.
+ID 31 marks an empty slot.
+
+Corners are packed from least to most significant as {x0,y0}, {x1,y1},
+{x2,y2}, {x3,y3}, with 10 bits per coordinate. Slopes occupy four signed
+27-bit Q16 fields in edge order 0-to-1, 1-to-2, 2-to-3, and 3-to-0.
+
+The synchronous lookup response corresponds to the request sampled three
+rising clock edges earlier. The slot and camera-angle request must stay
+aligned with that response.
 
 module cube_renderer(
     input clk, // 100 MHz clock
-    input rst, // reset
-    input tick_25mhz, // pixel pulse
-    input frame_start, // pulse at start of vblank, reload quads
-    input [9:0] pix_x, pix_y, // current pixel position
-    input [71:0] cube, // live cube state
-    input [4:0] rom_sticker_id, // sticker id from view_rom
-    input [79:0] rom_quad, // corners from view_rom
-    output [3:0] rom_slot, // slot to read from view_rom
+    input rst, // reset all renderer state
+    input tick_25mhz, // one-cycle pulse at the VGA pixel rate
+    input frame_start, // pulse at the start of a new frame
+    input [9:0] pix_x, pix_y, // current VGA pixel position
+    input [71:0] cube, // live sticker colours, 24 entries x 3 bits
+    input [4:0] actual_sticker_id, // sticker index in cube, or 31 for empty
+    input [79:0] sticker_corner_coords, // four projected {x,y} corners
+    input [107:0] sticker_edge_slopes, // four signed 27-bit Q16 slopes
+    output [3:0] visible_sticker_slot, // front-to-back slot requested from ROM
     output [2:0] pixel_colour, // colour code of this pixel
-    output pixel_on_cube // 1 = this pixel is on the cube
+    output pixel_on_cube, // 1 when this pixel is on a sticker
+    output row_done // one-cycle pulse when a complete row is ready
 );
 
+Sticker index s is face*4 + tile and addresses cube[s*3 +: 3]. The
+renderer loads all 12 slots for a projection in front-to-back order and uses
+the remapped actual sticker index to read each live colour. row_done pulses
+for one clock when the completed scanline has been stored and its row buffer
+is valid.
 module vga_unit(
     input clk, // 100 MHz clock
     input rst, // reset
