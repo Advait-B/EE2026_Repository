@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // Task 5.7: benchmark and verify the full solver against the Python reference.
-// 100 cubes from python/gen_solver_bench.py: solved, all 18 single moves, short
+// 100 cubes from Python/gen_solver_bench.py: solved, all 18 single moves, short
 // scrambles, 25-move scrambles, and cubes exactly 10 and 11 moves from solved.
 //
 // For every cube it checks:
