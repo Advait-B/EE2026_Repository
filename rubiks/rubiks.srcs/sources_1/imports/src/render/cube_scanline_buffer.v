@@ -117,6 +117,7 @@ module cube_scanline_buffer (
     assign run_hit_l5 = run_hit_l4[0] | run_hit_l4[1];
     assign run_value_l5 = run_hit_l4[1] ? run_value_l4[1] : run_value_l4[0];
 
+    // STAGE 4 COMBINATIONAL: select the current segment's pixel value.
     always @* begin
         pixel_colour = COL_BLANK;
         pixel_on_cube = 1'b0;
@@ -127,6 +128,7 @@ module cube_scanline_buffer (
         end
     end
 
+    // STAGE 4 SEQUENTIAL: store row segments and mark a row valid when complete.
     always @(posedge clk) begin
         if (rst) begin
             even_row_count <= 5'd0;

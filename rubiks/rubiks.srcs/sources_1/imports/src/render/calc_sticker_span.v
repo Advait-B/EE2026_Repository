@@ -42,7 +42,7 @@ module calc_sticker_span (
     reg signed [26:0] edge_floor_q16, edge_ceil_q16;
     reg [9:0] edge_left_pixel_x, edge_right_pixel_x;
 
-    // Select endpoints, slope, and saved x position for the current edge.
+    // STAGE 2 COMBINATIONAL: select edge geometry and calculate row crossings.
     // Edge rows use a half-open vertical range: low endpoint included,
     // high endpoint excluded, so a shared corner is counted only once.
     always @* begin
@@ -114,6 +114,7 @@ module calc_sticker_span (
             edge_right_pixel_x = edge_floor_q16[9:0];
     end
 
+    // STAGE 2 SEQUENTIAL: process the four edges and publish this sticker's span.
     always @(posedge clk) begin
         if (rst) begin
             state <= STATE_IDLE;
