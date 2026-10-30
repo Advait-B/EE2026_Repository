@@ -177,6 +177,24 @@ sticker_corner_coords, and sticker_edge_slopes in the matching front-to-back
 slot. Geometry is ready after all 12 responses arrive. row_done pulses for
 one clock when a completed scanline has been stored and its row buffer is
 valid.
+module calc_sticker_span(
+    input clk,
+    input rst,
+    input start, // start one sticker calculation
+    input [9:0] row_y, // screen row to check
+    input [79:0] corners, // {x3,y3,...,x0,y0}, 10 bits per coordinate
+    input [107:0] slopes, // four signed Q16 x-per-row slopes
+    input [107:0] edge_state_in, // four signed Q16 edge x positions
+    output [107:0] edge_state_out, // edge positions advanced for the next row
+    output [9:0] span_left, span_right, // rounded pixel bounds; 640/0 means invalid
+    output span_valid, // one when at least one pixel crosses the sticker
+    output busy,
+    output done // one-cycle pulse when results are ready
+);
+
+The helper checks four edges sequentially. It includes each edge's lower-y
+endpoint and excludes its higher-y endpoint, rounds the left bound up and the
+right bound down, and updates saved edge positions for the next row.
 module vga_unit(
     input clk, // 100 MHz clock
     input rst, // reset
