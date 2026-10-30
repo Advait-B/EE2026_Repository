@@ -127,6 +127,25 @@ module pattern_rom(
     output reg [3:0] perm_dist // moves to fix corner positions, 1 cycle after perm_addr
 );
 
+module solver_search(
+    input clk, // 100 MHz clock
+    input rst, // reset
+    input start, // pulse: begin searching cube
+    input cancel, // pulse: abort search
+    input [71:0] cube, // cube to solve
+    output busy, // 1 while searching
+    output reg found, // pulse: plan is ready
+    output reg fail, // pulse: no solution within MAX_DEPTH
+    output reg [3:0] sol_len, // number of moves in plan
+    output reg [54:0] plan // move k at plan[k*5 +: 5], unused slots = MV_NONE
+);
+
+module cube_encode(
+    input [71:0] cube, // recoloured cube
+    output reg [11:0] ori_addr, // orientation coordinate, 0-2186
+    output reg [15:0] perm_addr // permutation coordinate, 0-40319
+);
+
 module camera_unit(
     input clk, // 100 MHz clock
     input rst, // reset
