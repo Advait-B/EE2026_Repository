@@ -91,6 +91,9 @@ module cube_renderer (
         end
     endgenerate
 
+    // =====================================================================
+    // STAGE 1: Decode the memory data for each visible sticker.
+    // =====================================================================
     decode_mem decode_mem_inst (
         .clk(clk),
         .camera_angle_id(camera_angle_id_latched),
@@ -100,6 +103,9 @@ module cube_renderer (
         .sticker_edge_slopes(decoded_sticker_edge_slopes)
     );
 
+    // =====================================================================
+    // STAGE 2: Calculate each sticker's horizontal span for the current row.
+    // =====================================================================
     calc_sticker_span span_calc (
         .clk(clk),
         .rst(calc_rst),
@@ -116,6 +122,9 @@ module cube_renderer (
         .done(calc_done)
     );
 
+    // =====================================================================
+    // STAGE 3: Convert the row spans into ordered colour segments.
+    // =====================================================================
     cube_row_segments row_segments (
         .clk(clk),
         .rst(calc_rst),
@@ -134,6 +143,9 @@ module cube_renderer (
         .seg_count(seg_count)
     );
 
+    // =====================================================================
+    // STAGE 4: Buffer the row segments and produce scanout pixel values.
+    // =====================================================================
     cube_scanline_buffer scanline_buffer (
         .clk(clk),
         .rst(rst),
