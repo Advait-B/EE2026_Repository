@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // solver.v
-// Task 5.5: finds a solution for the current cube, then plays it back one move per 4 Hz tick.
+// Tasks 5.5 and 5.6: finds a solution for the current cube, then plays it back one move per 4 Hz tick.
 // Port contract: docs/module_ports.txt. Shared constants: src/pkg/cube_defs.vh
 
 module solver (
@@ -33,7 +33,8 @@ module solver (
     reg valid_out, done_out, err_out;
     reg [31:0] timer; // cycles spent searching
 
-    wire timeout = (state == S_SEARCH) && (timer == SEARCH_TIMEOUT - 1);
+    // task 5.6 watchdog: a plan found on the last cycle still wins
+    wire timeout = (state == S_SEARCH) && (timer == SEARCH_TIMEOUT - 1) && !found;
     wire abort = (state != S_IDLE) && (cancel || timeout);
 
     // search core (tasks 5.1-5.4)
