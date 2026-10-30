@@ -15,4 +15,27 @@ module cube_engine (
 );
 `include "cube_defs.vh"
 
+    reg [71:0] cube_reg;
+    reg [15:0] move_count_reg;
+    wire [71:0] next_cube;
+
+    assign cube = cube_reg;
+    assign move_count = move_count_reg;
+
+    move_rules rules (
+        .cube_in(cube_reg),
+        .move(move_req),
+        .cube_out(next_cube)
+    );
+
+    always @(posedge clk) begin
+        if (rst || cube_reset) begin
+            cube_reg <= SOLVED_CUBE;
+            move_count_reg <= 16'd0;
+        end else if (move_valid && move_is_valid(move_req)) begin
+            cube_reg <= next_cube;
+            move_count_reg <= move_count_reg + 16'd1;
+        end
+    end
+
 endmodule

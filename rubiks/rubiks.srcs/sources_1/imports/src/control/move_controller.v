@@ -15,4 +15,56 @@ module move_controller (
 );
 `include "cube_defs.vh"
 
+    reg [4:0] selected_move;
+    reg selected_valid;
+
+    assign move_req = selected_move;
+    assign move_valid = selected_valid;
+
+    // Route only the move source allowed by the seven-stage group plan. During
+    // solve, manual input preempts a simultaneous solver move. The game_fsm
+    // must pair that action with its solve_cancel pulse.
+    always @* begin
+        selected_move = MV_NONE;
+        selected_valid = 1'b0;
+
+        if (!rst) begin
+            case (stage)
+                ST_AUTO_SCRAMBLE: begin
+                    if (scr_valid && move_is_valid(scr_move)) begin
+                        selected_move = scr_move;
+                        selected_valid = 1'b1;
+                    end
+                end
+
+                ST_MANUAL_SCRAMBLE: begin
+                    if (manual_valid && move_is_valid(manual_move)) begin
+                        selected_move = manual_move;
+                        selected_valid = 1'b1;
+                    end
+                end
+
+                ST_SOLVING: begin
+                    if (manual_valid && move_is_valid(manual_move)) begin
+                        selected_move = manual_move;
+                        selected_valid = 1'b1;
+                    end else if (sol_valid && move_is_valid(sol_move)) begin
+                        selected_move = sol_move;
+                        selected_valid = 1'b1;
+                    end
+                end
+
+                ST_START, ST_SCRAMBLED, ST_SOLVED, ST_ERROR: begin
+                    selected_move = MV_NONE;
+                    selected_valid = 1'b0;
+                end
+
+                default: begin
+                    selected_move = MV_NONE;
+                    selected_valid = 1'b0;
+                end
+            endcase
+        end
+    end
+
 endmodule
