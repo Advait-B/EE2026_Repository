@@ -19,7 +19,7 @@ module decode_mem (
     // 256 angles x 10 bits = 2,560 bits: {projection ID, cube rotation ID}.
     reg [9:0] camera_angle_decode_rom [0:CAMERA_ANGLE_COUNT-1];
 
-    // 336 slots x 193 bits = 64,848 bits: {reference ID, slopes, corners}.
+    // 336 slots x 193 bits = 64,848 bits: {reference ID, 4 edge slopes, 4 corners}.
     reg [192:0] projection_slot_rom [0:PROJECTION_COUNT*VISIBLE_STICKER_SLOT_COUNT-1];
 
     // 24 rotations x 24 stickers x 5 bits = 2,880 bits.
