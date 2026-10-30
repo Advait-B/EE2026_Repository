@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // cube_renderer.v
-// Loads sticker geometry, calculates spans, and emits row color segments.
+// Loads geometry, calculates row spans, builds segments, and scans out pixels.
 // Port contract: docs/module_ports.txt. Shared constants: src/pkg/cube_defs.vh
 
 module cube_renderer (
@@ -14,7 +14,7 @@ module cube_renderer (
     input [71:0] cube, // live cube state
     output [2:0] pixel_colour, // colour code of this pixel
     output pixel_on_cube, // 1 = this pixel is on the cube
-    output row_done // one-cycle pulse when a complete row is ready
+    output row_done // one-cycle pulse when a row buffer becomes valid
 );
 `include "cube_defs.vh"
 
@@ -47,6 +47,7 @@ module cube_renderer (
     reg [3:0] active_slot;
     reg [9:0] row_y;
     reg [9:0] last_span_row;
+    reg row0_build_started;
     integer span_reset_index;
 
     wire request_valid;
@@ -115,7 +116,6 @@ module cube_renderer (
         .done(calc_done)
     );
 
-    // Segment pulses are the handoff for the row-buffer stage.
     cube_row_segments row_segments (
         .clk(clk),
         .rst(calc_rst),
@@ -132,6 +132,25 @@ module cube_renderer (
         .seg_x_start(seg_x_start),
         .seg_value(seg_value),
         .seg_count(seg_count)
+    );
+
+    cube_scanline_buffer scanline_buffer (
+        .clk(clk),
+        .rst(rst),
+        .frame_start(frame_start),
+        .start(segments_start),
+        .row_y(row_y),
+        .seg_valid(seg_valid),
+        .seg_index(seg_index),
+        .seg_x_start(seg_x_start),
+        .seg_value(seg_value),
+        .seg_count(seg_count),
+        .segments_done(segment_done),
+        .pix_x(pix_x),
+        .pix_y(pix_y),
+        .pixel_colour(pixel_colour),
+        .pixel_on_cube(pixel_on_cube),
+        .row_done(row_done)
     );
 
     // Load all 12 decode_mem responses and keep the request slot aligned with
@@ -187,13 +206,15 @@ module cube_renderer (
         end
     end
 
-    // Calculate each sticker's span for a row, then emit its color segments.
+    // Build row 0 while VGA is in vertical blanking. During scanout of row y,
+    // build y+1; row parity selects the buffer that is not currently scanned.
     always @(posedge clk) begin
         if (rst) begin
             span_controller_state <= SPAN_WAIT_ROW;
             active_slot <= 4'd0;
             row_y <= 10'd0;
             last_span_row <= 10'h3FF;
+            row0_build_started <= 1'b0;
             for (span_reset_index = 0;
                  span_reset_index < VISIBLE_STICKER_SLOT_COUNT;
                  span_reset_index = span_reset_index + 1) begin
@@ -207,6 +228,7 @@ module cube_renderer (
             active_slot <= 4'd0;
             row_y <= 10'd0;
             last_span_row <= 10'h3FF;
+            row0_build_started <= 1'b0;
             for (span_reset_index = 0;
                  span_reset_index < VISIBLE_STICKER_SLOT_COUNT;
                  span_reset_index = span_reset_index + 1) begin
@@ -218,8 +240,15 @@ module cube_renderer (
         end else begin
             case (span_controller_state)
                 SPAN_WAIT_ROW: begin
-                    if (geometry_ready && row_start) begin
-                        row_y <= pix_y;
+                    if (geometry_ready && !row0_build_started &&
+                        (pix_y >= SCREEN_H)) begin
+                        row_y <= 10'd0;
+                        active_slot <= 4'd0;
+                        row0_build_started <= 1'b1;
+                        span_controller_state <= SPAN_START_CALC;
+                    end else if (geometry_ready && row0_build_started && row_start &&
+                        (pix_y < SCREEN_H - 1)) begin
+                        row_y <= pix_y + 10'd1;
                         active_slot <= 4'd0;
                         last_span_row <= pix_y;
                         span_controller_state <= SPAN_START_CALC;
@@ -261,10 +290,5 @@ module cube_renderer (
             endcase
         end
     end
-
-    // Pixel lookup and row buffering are added in their own renderer stages.
-    assign pixel_colour = COL_BLANK;
-    assign pixel_on_cube = 1'b0;
-    assign row_done = 1'b0;
 
 endmodule

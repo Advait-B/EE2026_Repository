@@ -161,7 +161,7 @@ module cube_renderer(
     input clk, // 100 MHz clock
     input rst, // reset all renderer state
     input tick_25mhz, // one-cycle pulse at the VGA pixel rate
-    input frame_start, // pulse at the start of a new frame
+    input frame_start, // pulse at the start of vblank
     input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
     input [9:0] pix_x, pix_y, // current VGA pixel position
     input [71:0] cube, // live sticker colours, 24 entries x 3 bits
@@ -174,9 +174,8 @@ Sticker index s is face*4 + tile and addresses cube[s*3 +: 3]. On
 frame_start, the renderer latches camera_angle_id and requests all 12 slots
 from decode_mem. It stores each returned actual_sticker_id,
 sticker_corner_coords, and sticker_edge_slopes in the matching front-to-back
-slot. Geometry is ready after all 12 responses arrive. row_done pulses for
-one clock when a completed scanline has been stored and its row buffer is
-valid.
+slot. It builds row 0 during vblank, then builds row y+1 while row y is scanned.
+row_done pulses for one clock when a completed row buffer becomes valid.
 module calc_sticker_span(
     input clk,
     input rst,
@@ -217,6 +216,28 @@ The segment generator scans span boundaries from x=0 to x=640. At each
 interval it selects the first covering slot (frontmost) and emits a segment
 only when {on_cube, colour} changes. seg_index is zero-based; seg_count is
 the final number of emitted segments.
+module cube_scanline_buffer(
+    input clk,
+    input rst,
+    input frame_start,
+    input start,
+    input [9:0] row_y,
+    input seg_valid,
+    input [4:0] seg_index,
+    input [9:0] seg_x_start,
+    input [3:0] seg_value,
+    input [4:0] seg_count,
+    input segments_done,
+    input [9:0] pix_x, pix_y,
+    output [2:0] pixel_colour,
+    output pixel_on_cube,
+    output row_done
+);
+
+The buffer keeps separate even-row and odd-row segment tables. It accepts a row
+only when its buffer is not being scanned, writes each valid segment, commits
+the segment count, and raises that row's valid flag on the following clock.
+Scanout selects the segment with the greatest x start not greater than pix_x.
 module vga_unit(
     input clk, // 100 MHz clock
     input rst, // reset
