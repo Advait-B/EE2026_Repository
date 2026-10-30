@@ -52,7 +52,7 @@ module decode_mem (
         $readmemh("../../rubiks.srcs/sources_1/imports/src/render/mem/rotation_stickers.mem", cube_rotation_sticker_map_rom);
     end
 
-    // Pipeline the request through angle decode, geometry read, and ID remap.
+    // STAGE 1: Pipeline angle decode, geometry read, and sticker ID remap.
     // Outputs match the request after three rising clock edges.
     always @(posedge clk) begin
         camera_angle_decode_result <= camera_angle_decode_rom[camera_angle_id];

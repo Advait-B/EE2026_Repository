@@ -167,6 +167,7 @@ module cube_renderer (
 
     // Load all 12 decode_mem responses and keep the request slot aligned with
     // the decoder's three-clock output latency.
+    // STAGE 1 CONTROL: request the memory data and store each decoded response.
     always @(posedge clk) begin
         if (rst) begin
             camera_angle_id_latched <= 8'd0;
@@ -220,6 +221,7 @@ module cube_renderer (
 
     // Build row 0 while VGA is in vertical blanking. During scanout of row y,
     // build y+1; row parity selects the buffer that is not currently scanned.
+    // STAGES 2-3 CONTROL: calculate the sticker spans, then start row segmentation.
     always @(posedge clk) begin
         if (rst) begin
             span_controller_state <= SPAN_WAIT_ROW;

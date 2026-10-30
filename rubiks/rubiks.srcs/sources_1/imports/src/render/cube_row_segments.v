@@ -49,8 +49,8 @@ module cube_row_segments (
     reg [2:0] slot_colour;
     reg [10:0] slot_next_boundary_x;
 
-    // Inspect one slot per clock. Slot order is front-to-back, so the first
-    // hit supplies the color for the current interval.
+    // STAGE 3 COMBINATIONAL: inspect the current slot and find the next boundary.
+    // Slot order is front-to-back, so the first hit supplies the interval color.
     always @* begin
         slot_sticker_id = sticker_ids[slot_index*5 +: 5];
         slot_span_left = span_lefts[slot_index*10 +: 10];
@@ -82,6 +82,7 @@ module cube_row_segments (
             slot_next_boundary_x = slot_span_end_x;
     end
 
+    // STAGE 3 SEQUENTIAL: walk the spans and emit ordered colour segments.
     always @(posedge clk) begin
         if (rst) begin
             state <= STATE_IDLE;
