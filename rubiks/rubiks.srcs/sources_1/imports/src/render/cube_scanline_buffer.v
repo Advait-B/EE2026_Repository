@@ -38,10 +38,25 @@ module cube_scanline_buffer (
     reg capture_error;
     reg [1:0] commit_state;
 
-    reg [4:0] scan_segment_count;
-    reg scan_buffer_valid;
-    reg [13:0] scan_segment_entry;
-    integer scan_index;
+    wire [4:0] scan_segment_count;
+    wire scan_buffer_valid;
+
+    // A padded 32-leaf tree picks the rightmost segment whose start is at or
+    // before pix_x. The segment table is written in increasing x order.
+    wire [31:0] run_hit_l0;
+    wire [15:0] run_hit_l1;
+    wire [7:0] run_hit_l2;
+    wire [3:0] run_hit_l3;
+    wire [1:0] run_hit_l4;
+    wire run_hit_l5;
+    wire [3:0] run_value_l0 [0:31];
+    wire [3:0] run_value_l1 [0:15];
+    wire [3:0] run_value_l2 [0:7];
+    wire [3:0] run_value_l3 [0:3];
+    wire [3:0] run_value_l4 [0:1];
+    wire [3:0] run_value_l5;
+    genvar scan_leaf;
+    genvar tree_node;
 
     wire scan_active;
     wire target_buffer_is_scanned;
@@ -49,36 +64,66 @@ module cube_scanline_buffer (
     assign scan_active = (pix_y < SCREEN_H);
     assign target_buffer_is_scanned = scan_active && (capture_buffer == pix_y[0]);
 
-    // Select the current scanline's table and find the last segment start
-    // that is not greater than pix_x. Segment starts are emitted in order.
+    assign scan_segment_count = pix_y[0] ? odd_row_count : even_row_count;
+    assign scan_buffer_valid = pix_y[0] ? odd_row_valid : even_row_valid;
+
+    generate
+        for (scan_leaf = 0; scan_leaf < 32; scan_leaf = scan_leaf + 1) begin : scan_leaves
+            localparam [4:0] LEAF_INDEX = scan_leaf;
+
+            if (scan_leaf < MAX_SEGMENT_COUNT) begin : stored_segment
+                wire [13:0] run_entry;
+
+                assign run_entry = pix_y[0] ? odd_row_segments[scan_leaf] :
+                                              even_row_segments[scan_leaf];
+                assign run_hit_l0[scan_leaf] = scan_buffer_valid &&
+                    (scan_segment_count > LEAF_INDEX) && (run_entry[13:4] <= pix_x);
+                assign run_value_l0[scan_leaf] = run_entry[3:0];
+            end else begin : unused_leaf
+                assign run_hit_l0[scan_leaf] = 1'b0;
+                assign run_value_l0[scan_leaf] = 4'd0;
+            end
+        end
+
+        for (tree_node = 0; tree_node < 16; tree_node = tree_node + 1) begin : tree_level_1
+            assign run_hit_l1[tree_node] = run_hit_l0[2*tree_node] |
+                                           run_hit_l0[2*tree_node+1];
+            assign run_value_l1[tree_node] = run_hit_l0[2*tree_node+1] ?
+                run_value_l0[2*tree_node+1] : run_value_l0[2*tree_node];
+        end
+
+        for (tree_node = 0; tree_node < 8; tree_node = tree_node + 1) begin : tree_level_2
+            assign run_hit_l2[tree_node] = run_hit_l1[2*tree_node] |
+                                           run_hit_l1[2*tree_node+1];
+            assign run_value_l2[tree_node] = run_hit_l1[2*tree_node+1] ?
+                run_value_l1[2*tree_node+1] : run_value_l1[2*tree_node];
+        end
+
+        for (tree_node = 0; tree_node < 4; tree_node = tree_node + 1) begin : tree_level_3
+            assign run_hit_l3[tree_node] = run_hit_l2[2*tree_node] |
+                                           run_hit_l2[2*tree_node+1];
+            assign run_value_l3[tree_node] = run_hit_l2[2*tree_node+1] ?
+                run_value_l2[2*tree_node+1] : run_value_l2[2*tree_node];
+        end
+
+        for (tree_node = 0; tree_node < 2; tree_node = tree_node + 1) begin : tree_level_4
+            assign run_hit_l4[tree_node] = run_hit_l3[2*tree_node] |
+                                           run_hit_l3[2*tree_node+1];
+            assign run_value_l4[tree_node] = run_hit_l3[2*tree_node+1] ?
+                run_value_l3[2*tree_node+1] : run_value_l3[2*tree_node];
+        end
+    endgenerate
+
+    assign run_hit_l5 = run_hit_l4[0] | run_hit_l4[1];
+    assign run_value_l5 = run_hit_l4[1] ? run_value_l4[1] : run_value_l4[0];
+
     always @* begin
         pixel_colour = COL_BLANK;
         pixel_on_cube = 1'b0;
-        scan_segment_count = 5'd0;
-        scan_buffer_valid = 1'b0;
-        scan_segment_entry = 14'd0;
 
-        if (pix_y[0]) begin
-            scan_segment_count = odd_row_count;
-            scan_buffer_valid = odd_row_valid;
-        end else begin
-            scan_segment_count = even_row_count;
-            scan_buffer_valid = even_row_valid;
-        end
-
-        if ((pix_x < SCREEN_W) && scan_active && scan_buffer_valid) begin
-            for (scan_index = 0; scan_index < MAX_SEGMENT_COUNT; scan_index = scan_index + 1) begin
-                if (pix_y[0])
-                    scan_segment_entry = odd_row_segments[scan_index];
-                else
-                    scan_segment_entry = even_row_segments[scan_index];
-
-                if ((scan_index < scan_segment_count) &&
-                    (scan_segment_entry[13:4] <= pix_x)) begin
-                    pixel_on_cube = scan_segment_entry[3];
-                    pixel_colour = scan_segment_entry[2:0];
-                end
-            end
+        if ((pix_x < SCREEN_W) && scan_active && scan_buffer_valid && run_hit_l5) begin
+            pixel_on_cube = run_value_l5[3];
+            pixel_colour = run_value_l5[2:0];
         end
     end
 
