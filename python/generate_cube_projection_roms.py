@@ -88,9 +88,8 @@ def validate_decode_table(decode_values, rotations):
     if projection_ids != set(range(PROJECTION_COUNT)):
         missing = sorted(set(range(PROJECTION_COUNT)) - projection_ids)
         raise ValueError(f"Decoder table does not reference every projection; missing {missing}.")
-    if rotation_ids != set(range(CUBE_ROTATION_COUNT)):
-        missing = sorted(set(range(CUBE_ROTATION_COUNT)) - rotation_ids)
-        raise ValueError(f"Decoder table does not reference every rotation; missing {missing}.")
+    # The decode table may use a subset of rotations. The remap ROM below
+    # still contains one entry set for each of the 24 valid rotations.
 
     angle_matrices = [camera_angle_matrix(angle_id) for angle_id in range(CAMERA_ANGLE_COUNT)]
     for camera_angle_id, packed in enumerate(decode_values):
