@@ -1,7 +1,7 @@
 """Generate cube_layout.mem and rotation_stickers.mem from the decode table.
 
 Run from any working directory with:
-    python path/to/python/generate_cube_projection_roms.py
+    python path/to/Python/generate_cube_projection_roms.py
 
 camera_angle_decode.mem is a reviewed input table and is not generated here.
 """

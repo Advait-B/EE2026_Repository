@@ -15,79 +15,61 @@ Case mix (fixed seeds, so the files are reproducible):
     10  cubes exactly 10 moves from solved
     10  cubes exactly 11 moves from solved (the hardest 2x2 positions)
 
-Run from the repository root: python3 python/gen_solver_bench.py
+Run from the repository root: python3 Python/gen_solver_bench.py
 """
 
-import os
 import random
-import sys
 import time
 from array import array
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import solver as ref  # noqa: E402
+import solver as ref
+from generate_tables import (N_ORIENTATION_COORDS, N_PERMUTATION_COORDS,
+                             orientation_successors, permutation_successors)
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tests")
+OUT_DIR = Path(__file__).resolve().parent.parent / "tests"
 MV_NONE = 31
-MAX_DEPTH = 11
-N_ORI = 729
 
 
 def cube_hex(state):
     """Pack a 24-colour state into the 72-bit cube bus, as 18 hex digits."""
-    v = 0
-    for s, col in enumerate(state):
-        v |= col << (3 * s)
-    return f"{v:018x}"
+    return f"{sum(col << (3 * s) for s, col in enumerate(state)):018x}"
 
 
 def plan_hex(moves):
     """Pack a move list into the 55-bit plan bus, as 14 hex digits."""
-    v = 0
-    for k in range(MAX_DEPTH):
-        v |= (moves[k] if k < len(moves) else MV_NONE) << (5 * k)
-    return f"{v:014x}"
+    slots = moves + [MV_NONE] * (ref.MAX_DEPTH - len(moves))
+    return f"{sum(m << (5 * k) for k, m in enumerate(slots)):014x}"
 
 
-def coord_tables():
-    """Return per-move transition tables for the perm and ori coordinates."""
-    tables = []
-    for coord, size in ((ref.perm_index, 5040), (ref.ori_index, N_ORI)):
-        rep = {coord(ref.SOLVED): ref.SOLVED}
-        todo = [ref.SOLVED]
-        while todo:
-            state = todo.pop()
-            for m in ref.SOLVER_MOVES:
-                child = ref.apply_move(state, m)
-                if coord(child) not in rep:
-                    rep[coord(child)] = child
-                    todo.append(child)
-        assert len(rep) == size
-        tables.append([[coord(ref.apply_move(rep[c], m)) for m in ref.SOLVER_MOVES]
-                       for c in range(size)])
-    return tables
+def inverse(m):
+    """X <-> X', X2 stays X2."""
+    return m - m % 3 + (1, 0, 2)[m % 3]
 
 
 def far_cubes(depths, count, seed):
     """Return `count` cubes at each exact distance in `depths`.
 
     Breadth-first search over every position reachable with U, R, F
-    (the DBL corner stays fixed), then walk back from random positions at
-    the wanted distance to recover a scramble that reaches them.
+    (the DBL corner stays fixed), indexed by the hardware coordinates,
+    then walk back from random positions at the wanted distance to
+    recover a scramble that reaches them.
     """
-    perm_mv, ori_mv = coord_tables()
-    size = 5040 * N_ORI
-    dist = bytearray([255]) * size
-    start = ref.perm_index(ref.SOLVED) * N_ORI + ref.ori_index(ref.SOLVED)
-    dist[start] = 0
-    frontier = array("i", [start])
-    d = 0
+    ori_mv = [orientation_successors(o)[:9] for o in range(N_ORIENTATION_COORDS)]
+    perm_mv = [permutation_successors(p)[:9] for p in range(N_PERMUTATION_COORDS)]
+
+    def neighbours(idx):
+        pm, om = perm_mv[idx // N_ORIENTATION_COORDS], ori_mv[idx % N_ORIENTATION_COORDS]
+        return [pm[m] * N_ORIENTATION_COORDS + om[m] for m in range(9)]
+
+    dist = bytearray([255]) * (N_PERMUTATION_COORDS * N_ORIENTATION_COORDS)
+    dist[0] = 0  # solved is coordinate (0, 0)
+    frontier, levels, d = array("i", [0]), {}, 0
     while frontier:
+        levels[d] = frontier
         nxt = array("i")
         for idx in frontier:
-            pm, om = perm_mv[idx // N_ORI], ori_mv[idx % N_ORI]
-            for m in range(9):
-                child = pm[m] * N_ORI + om[m]
+            for child in neighbours(idx):
                 if dist[child] == 255:
                     dist[child] = d + 1
                     nxt.append(child)
@@ -97,21 +79,17 @@ def far_cubes(depths, count, seed):
     rng = random.Random(seed)
     out = []
     for want in depths:
-        pool = [i for i in range(size) if dist[i] == want]
-        for idx in rng.sample(pool, count):
+        for idx in rng.sample(list(levels[want]), count):
             # walk to solved, always to a neighbour one move closer
             path = []
-            while dist[idx] != 0:
-                for m in range(9):
-                    child = perm_mv[idx // N_ORI][m] * N_ORI + ori_mv[idx % N_ORI][m]
-                    if dist[child] == dist[idx] - 1:
-                        path.append(m)
-                        idx = child
-                        break
+            while dist[idx]:
+                m = next(m for m, c in enumerate(neighbours(idx)) if dist[c] == dist[idx] - 1)
+                path.append(m)
+                idx = neighbours(idx)[m]
             # the cube is the inverse of that path applied to solved
             state = ref.SOLVED
             for m in reversed(path):
-                state = ref.apply_move(state, m - (m % 3) + (1, 0, 2)[m % 3])
+                state = ref.apply_move(state, inverse(m))
             out.append(state)
     return out
 
@@ -134,12 +112,13 @@ def main():
     cubes, plans, lengths = [], [], []
     for k, (label, state) in enumerate(cases):
         t0 = time.time()
-        sol, _ = ref.solve(state)
+        sol = ref.solve(state)
         check = state
         for m in sol:
             check = ref.apply_move(check, m)
         assert ref.is_solved(check), label
-        assert len(sol) <= MAX_DEPTH, label
+        if label.startswith("distance"):
+            assert len(sol) == int(label.split()[1]), label
         cubes.append(cube_hex(state))
         plans.append(plan_hex(sol))
         lengths.append(f"{len(sol):x}")
@@ -147,8 +126,7 @@ def main():
               f"{' '.join(map(ref.move_name, sol))}")
 
     for name, rows in (("cubes", cubes), ("plans", plans), ("lengths", lengths)):
-        with open(os.path.join(OUT_DIR, f"solver_bench_{name}.mem"), "w") as f:
-            f.write("\n".join(rows) + "\n")
+        (OUT_DIR / f"solver_bench_{name}.mem").write_text("\n".join(rows) + "\n")
 
 
 if __name__ == "__main__":
