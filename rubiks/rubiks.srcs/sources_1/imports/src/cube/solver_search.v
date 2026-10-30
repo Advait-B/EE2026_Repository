@@ -68,7 +68,15 @@ module solver_search (
 
     wire [4:0] try_move = {1'b0, next_move[depth]};
     wire [4:0] prev_move = plan[(depth - 4'd1)*5 +: 5];
-    wire skip = (depth != 4'd0) && same_face(try_move, prev_move); // task 5.4
+
+    // task 5.4: skip a move on the same face as the previous one
+    wire skip;
+    move_prune prune (
+        .move(try_move),
+        .prev_move(prev_move),
+        .has_prev(depth != 4'd0),
+        .skip(skip)
+    );
 
     // child cube for the move being tried
     wire [71:0] child_next;
