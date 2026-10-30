@@ -54,7 +54,7 @@ def _project_point(point, matrix):
 
 
 def projection_slot_records(camera_angle_id, faces, tile_uv):
-    """Return 12 (canonical sticker ID, four corners) front-to-back records.
+    """Return 12 (reference sticker ID, four corners) front-to-back records.
 
     Empty slots have ID 31 and four zero-valued corners. The face bases and
     tile coordinates come from cube_rotation_helpers and match cube_defs.vh.
@@ -74,9 +74,9 @@ def projection_slot_records(camera_angle_id, faces, tile_uv):
             for du, dv in CORNER_UV:
                 point = add(center, add(scale(right, du), scale(up, dv)))
                 corners.append(_project_point(point, matrix))
-            canonical_sticker_id = face * 4 + tile
+            reference_sticker_id = face * 4 + tile
             visible.append((
-                -camera_center[2], canonical_sticker_id, tuple(corners)
+                -camera_center[2], reference_sticker_id, tuple(corners)
             ))
 
     visible.sort(key=lambda record: (record[0], record[1]))
@@ -87,8 +87,8 @@ def projection_slot_records(camera_angle_id, faces, tile_uv):
         )
 
     records = [
-        (canonical_sticker_id, corners)
-        for _, canonical_sticker_id, corners in visible
+        (reference_sticker_id, corners)
+        for _, reference_sticker_id, corners in visible
     ]
     empty_corners = ((0, 0), (0, 0), (0, 0), (0, 0))
     records.extend(
