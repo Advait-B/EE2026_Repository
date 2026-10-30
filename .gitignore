@@ -9,3 +9,9 @@
 *.sim/
 *.ip_user_files/
 *.gen/
+
+# Python
+__pycache__/
+
+# simulation output
+solver_bench_results.csv
