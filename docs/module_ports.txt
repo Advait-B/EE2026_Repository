@@ -146,6 +146,13 @@ module cube_encode(
     output reg [15:0] perm_addr // permutation coordinate, 0-40319
 );
 
+module move_prune(
+    input [4:0] move, // move about to be tried
+    input [4:0] prev_move, // move taken one level up
+    input has_prev, // 0 at the root, where there is no previous move
+    output skip // 1 = do not try this move
+);
+
 module camera_unit(
     input clk, // 100 MHz clock
     input rst, // reset
