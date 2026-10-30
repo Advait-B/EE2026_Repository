@@ -162,22 +162,21 @@ module cube_renderer(
     input rst, // reset all renderer state
     input tick_25mhz, // one-cycle pulse at the VGA pixel rate
     input frame_start, // pulse at the start of a new frame
+    input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
     input [9:0] pix_x, pix_y, // current VGA pixel position
     input [71:0] cube, // live sticker colours, 24 entries x 3 bits
-    input [4:0] actual_sticker_id, // sticker index in cube, or 31 for empty
-    input [79:0] sticker_corner_coords, // four projected {x,y} corners
-    input [107:0] sticker_edge_slopes, // four signed 27-bit Q16 slopes
-    output [3:0] visible_sticker_slot, // front-to-back slot requested from ROM
     output [2:0] pixel_colour, // colour code of this pixel
     output pixel_on_cube, // 1 when this pixel is on a sticker
     output row_done // one-cycle pulse when a complete row is ready
 );
 
-Sticker index s is face*4 + tile and addresses cube[s*3 +: 3]. The
-renderer loads all 12 slots for a projection in front-to-back order and uses
-the remapped actual sticker index to read each live colour. row_done pulses
-for one clock when the completed scanline has been stored and its row buffer
-is valid.
+Sticker index s is face*4 + tile and addresses cube[s*3 +: 3]. On
+frame_start, the renderer latches camera_angle_id and requests all 12 slots
+from decode_mem. It stores each returned actual_sticker_id,
+sticker_corner_coords, and sticker_edge_slopes in the matching front-to-back
+slot. Geometry is ready after all 12 responses arrive. row_done pulses for
+one clock when a completed scanline has been stored and its row buffer is
+valid.
 module vga_unit(
     input clk, // 100 MHz clock
     input rst, // reset
