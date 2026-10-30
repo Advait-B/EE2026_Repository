@@ -28,8 +28,8 @@ from cube_slope_encoding import pack_corner_coords, pack_edge_slopes
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RENDER_DIR = (
-    ROOT / "rubiks" / "rubiks.srcs" / "sources_1" / "imports" / "src" / "render"
+RENDER_MEM_DIR = (
+    ROOT / "rubiks" / "rubiks.srcs" / "sources_1" / "imports" / "src" / "render" / "mem"
 )
 CUBE_ROTATION_COUNT = 24
 GEOMETRY_RECORD_WIDTH = 193
@@ -128,7 +128,7 @@ def write_hex_lines(path, values):
     path.write_bytes(("\n".join(values) + "\n").encode("ascii"))
 
 
-def generate_tables(decode_values, output_dir=RENDER_DIR):
+def generate_tables(decode_values, output_dir=RENDER_MEM_DIR):
     rotations = cube_rotations()
     representatives = validate_decode_table(decode_values, rotations)
 
@@ -160,7 +160,7 @@ def generate_tables(decode_values, output_dir=RENDER_DIR):
 
 
 def main():
-    decode_path = RENDER_DIR / "camera_angle_decode.mem"
+    decode_path = RENDER_MEM_DIR / "camera_angle_decode.mem"
     try:
         decode_values = read_decode_table(decode_path)
         layout_count, rotation_count = generate_tables(decode_values)
@@ -168,7 +168,7 @@ def main():
         raise SystemExit(f"error: {error}") from error
     print(
         f"Wrote {layout_count} projection slots and "
-        f"{rotation_count} sticker mappings to {RENDER_DIR}."
+        f"{rotation_count} sticker mappings to {RENDER_MEM_DIR}."
     )
 
 
