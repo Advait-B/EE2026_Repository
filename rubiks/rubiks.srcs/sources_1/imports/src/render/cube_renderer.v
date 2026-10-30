@@ -11,9 +11,9 @@ module cube_renderer (
     input frame_start, // pulse at start of vblank, reload quads
     input [9:0] pix_x, pix_y, // current pixel position
     input [71:0] cube, // live cube state
-    input [4:0] rom_sticker_id, // sticker id from view_rom
-    input [79:0] rom_quad, // corners from view_rom
-    output [3:0] rom_slot, // slot to read from view_rom
+    input [4:0] rom_sticker_id, // sticker id from decode_mem
+    input [79:0] rom_quad, // corners from decode_mem
+    output [3:0] rom_slot, // slot to read from decode_mem
     output [2:0] pixel_colour, // colour code of this pixel
     output pixel_on_cube // 1 = this pixel is on the cube
 );

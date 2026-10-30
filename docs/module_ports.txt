@@ -133,7 +133,7 @@ module camera_unit(
 Camera-angle IDs form a 16-by-16 grid. Bits [3:0] are the yaw bin and bits
 [7:4] are the pitch bin. Each bin ranges from 0 to 15.
 
-module cube_layout_rom(
+module decode_mem(
     input clk, // 100 MHz clock
     input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
     input [3:0] visible_sticker_slot, // requested depth-ordered slot, 0-11
@@ -146,7 +146,7 @@ The angle decoder table has 256 entries. Each 10-bit entry is
 {projection_id[4:0], cube_rotation_id[4:0]}; projection IDs are 0-27 and
 rotation IDs are 0-23. Each projection has 12 visible sticker slots ordered
 front to back, so slot 0 is the frontmost. The table stores reference sticker
-IDs; cube_layout_rom remaps them to the actual sticker indices used by cube.
+IDs; decode_mem remaps them to the actual sticker indices used by cube.
 ID 31 marks an empty slot.
 
 Corners are packed from least to most significant as {x0,y0}, {x1,y1},
