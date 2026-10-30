@@ -195,6 +195,28 @@ module calc_sticker_span(
 The helper checks four edges sequentially. It includes each edge's lower-y
 endpoint and excludes its higher-y endpoint, rounds the left bound up and the
 right bound down, and updates saved edge positions for the next row.
+module cube_row_segments(
+    input clk,
+    input rst,
+    input start,
+    input [71:0] cube,
+    input [59:0] sticker_ids, // slot i: [i*5 +: 5], actual sticker IDs
+    input [119:0] span_lefts, // slot i: [i*10 +: 10]
+    input [119:0] span_rights, // slot i: [i*10 +: 10]
+    input [11:0] span_valid,
+    output busy,
+    output done,
+    output seg_valid, // one-cycle pulse for a new segment
+    output [4:0] seg_index,
+    output [9:0] seg_x_start,
+    output [3:0] seg_value, // {on_cube, colour[2:0]}
+    output [4:0] seg_count
+);
+
+The segment generator scans span boundaries from x=0 to x=640. At each
+interval it selects the first covering slot (frontmost) and emits a segment
+only when {on_cube, colour} changes. seg_index is zero-based; seg_count is
+the final number of emitted segments.
 module vga_unit(
     input clk, // 100 MHz clock
     input rst, // reset

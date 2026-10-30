@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // cube_renderer.v
-// Loads projected sticker geometry and calculates per-sticker row spans.
+// Loads sticker geometry, calculates spans, and emits row color segments.
 // Port contract: docs/module_ports.txt. Shared constants: src/pkg/cube_defs.vh
 
 module cube_renderer (
@@ -19,9 +19,11 @@ module cube_renderer (
 `include "cube_defs.vh"
 
     localparam VISIBLE_STICKER_SLOT_COUNT = 12;
-    localparam [1:0] SPAN_WAIT_ROW = 2'd0;
-    localparam [1:0] SPAN_START_CALC = 2'd1;
-    localparam [1:0] SPAN_WAIT_CALC = 2'd2;
+    localparam [2:0] SPAN_WAIT_ROW = 3'd0;
+    localparam [2:0] SPAN_START_CALC = 3'd1;
+    localparam [2:0] SPAN_WAIT_CALC = 3'd2;
+    localparam [2:0] SPAN_START_SEGMENTS = 3'd3;
+    localparam [2:0] SPAN_WAIT_SEGMENTS = 3'd4;
 
     reg [4:0] actual_sticker_id [0:VISIBLE_STICKER_SLOT_COUNT-1];
     reg [79:0] sticker_corner_coords [0:VISIBLE_STICKER_SLOT_COUNT-1];
@@ -41,7 +43,7 @@ module cube_renderer (
     reg geometry_ready;
     integer geometry_reset_index;
 
-    reg [1:0] span_controller_state;
+    reg [2:0] span_controller_state;
     reg [3:0] active_slot;
     reg [9:0] row_y;
     reg [9:0] last_span_row;
@@ -54,19 +56,39 @@ module cube_renderer (
 
     wire row_start;
     wire calc_start;
+    wire segments_start;
     wire calc_rst;
     wire [107:0] calc_edge_state_in;
     wire [107:0] calc_edge_state_out;
     wire [9:0] calc_left, calc_right;
     wire calc_valid, calc_busy, calc_done;
 
+    wire [59:0] segment_sticker_ids;
+    wire [119:0] segment_span_lefts, segment_span_rights;
+    wire [11:0] segment_span_valid;
+    wire segment_busy, segment_done, seg_valid;
+    wire [4:0] seg_index, seg_count;
+    wire [9:0] seg_x_start;
+    wire [3:0] seg_value;
+
     assign request_valid = loading_geometry &&
         (visible_sticker_slot < VISIBLE_STICKER_SLOT_COUNT);
     assign row_start = tick_25mhz && (pix_x == 10'd0) &&
         (pix_y < SCREEN_H) && (pix_y != last_span_row);
     assign calc_start = (span_controller_state == SPAN_START_CALC);
+    assign segments_start = (span_controller_state == SPAN_START_SEGMENTS);
     assign calc_rst = rst || frame_start;
     assign calc_edge_state_in = edge_state_by_slot[active_slot];
+
+    genvar pack_slot;
+    generate
+        for (pack_slot = 0; pack_slot < VISIBLE_STICKER_SLOT_COUNT; pack_slot = pack_slot + 1) begin: segment_input_pack
+            assign segment_sticker_ids[pack_slot*5 +: 5] = actual_sticker_id[pack_slot];
+            assign segment_span_lefts[pack_slot*10 +: 10] = sticker_span_left[pack_slot];
+            assign segment_span_rights[pack_slot*10 +: 10] = sticker_span_right[pack_slot];
+            assign segment_span_valid[pack_slot] = sticker_span_valid[pack_slot];
+        end
+    endgenerate
 
     decode_mem decode_mem_inst (
         .clk(clk),
@@ -91,6 +113,25 @@ module cube_renderer (
         .span_valid(calc_valid),
         .busy(calc_busy),
         .done(calc_done)
+    );
+
+    // Segment pulses are the handoff for the row-buffer stage.
+    cube_row_segments row_segments (
+        .clk(clk),
+        .rst(calc_rst),
+        .start(segments_start),
+        .cube(cube),
+        .sticker_ids(segment_sticker_ids),
+        .span_lefts(segment_span_lefts),
+        .span_rights(segment_span_rights),
+        .span_valid(segment_span_valid),
+        .busy(segment_busy),
+        .done(segment_done),
+        .seg_valid(seg_valid),
+        .seg_index(seg_index),
+        .seg_x_start(seg_x_start),
+        .seg_value(seg_value),
+        .seg_count(seg_count)
     );
 
     // Load all 12 decode_mem responses and keep the request slot aligned with
@@ -146,8 +187,7 @@ module cube_renderer (
         end
     end
 
-    // Calculate each sticker's span once per visible scanline. Slots are
-    // traversed in the same front-to-back order used by the geometry table.
+    // Calculate each sticker's span for a row, then emit its color segments.
     always @(posedge clk) begin
         if (rst) begin
             span_controller_state <= SPAN_WAIT_ROW;
@@ -187,7 +227,6 @@ module cube_renderer (
                 end
 
                 SPAN_START_CALC: begin
-                    // calc_start is high for this cycle and starts the helper.
                     span_controller_state <= SPAN_WAIT_CALC;
                 end
 
@@ -199,12 +238,21 @@ module cube_renderer (
                         edge_state_by_slot[active_slot] <= calc_edge_state_out;
 
                         if (active_slot == VISIBLE_STICKER_SLOT_COUNT - 1) begin
-                            span_controller_state <= SPAN_WAIT_ROW;
+                            span_controller_state <= SPAN_START_SEGMENTS;
                         end else begin
                             active_slot <= active_slot + 4'd1;
                             span_controller_state <= SPAN_START_CALC;
                         end
                     end
+                end
+
+                SPAN_START_SEGMENTS: begin
+                    span_controller_state <= SPAN_WAIT_SEGMENTS;
+                end
+
+                SPAN_WAIT_SEGMENTS: begin
+                    if (segment_done)
+                        span_controller_state <= SPAN_WAIT_ROW;
                 end
 
                 default: begin
@@ -214,7 +262,7 @@ module cube_renderer (
         end
     end
 
-    // Pixel selection and color-run scanout are added in later renderer stages.
+    // Pixel lookup and row buffering are added in their own renderer stages.
     assign pixel_colour = COL_BLANK;
     assign pixel_on_cube = 1'b0;
     assign row_done = 1'b0;
