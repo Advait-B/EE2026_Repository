@@ -1,0 +1,73 @@
+#--------------------------------------------------------------------------
+# AMD Vivado v2025.2 (64-bit)
+# SW Build: 6299465 on Fri Nov 14 19:35:11 GMT 2025
+# IP Build: 6300035 on Fri Nov 14 10:48:45 MST 2025
+# SharedData Build: 6298862 on Thu Nov 13 04:50:51 MST 2025
+# Current time: Sun Nov 01 17:21:14 SGT 2026
+# Process ID (PID): 24800
+# User: su yi
+# OS: Windows 11
+# Project: rubiks
+# Part: xc7a35tcpg236-1
+#
+# This file is an indication that an internal application error occurred.
+# This information is useful for debugging. Please open a case with AMD.
+# Technical Support with this file and a testcase attached.
+#--------------------------------------------------------------------------
+Sun Nov 01 17:21:14 SGT 2026
+java.lang.Exception: java.lang.UnsatisfiedLinkError: 'void ui.project.projectvivadoi.ProjDrcUtils_setRequiredObjectInDbContext(long)'
+	at ui.utils.e.c.m(SourceFile:306)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:318)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at ui.frmwork.a.d.dispatchEvent(SourceFile:38)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+Caused by: java.lang.UnsatisfiedLinkError: 'void ui.project.projectvivadoi.ProjDrcUtils_setRequiredObjectInDbContext(long)'
+	at ui.project.projectvivadoi.ProjDrcUtils_setRequiredObjectInDbContext(Native Method)
+	at ui.data.drc.a.a(SourceFile:71)
+	at ui.data.drc.a.a(SourceFile:247)
+	at ui.views.c.cF$a.beD(SourceFile:133)
+	at ui.dlg.c.bk$a.construct(SourceFile:1217)
+	at ui.frmwork.D.run(SourceFile:213)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+Sun Nov 01 17:21:14 SGT 2026
+java.lang.NullPointerException: Cannot invoke "java.util.Vector.size()" because "this.lFA" is null
+	at ui.dlg.o.n.as(SourceFile:165)
+	at ui.dlg.o.n.<init>(SourceFile:120)
+	at ui.dlg.o.h.gUH(SourceFile:260)
+	at ui.dlg.o.h.gUG(SourceFile:172)
+	at ui.dlg.o.h.bex(SourceFile:107)
+	at ui.dlg.c.m.goO(SourceFile:175)
+	at ui.dlg.c.m.goK(SourceFile:62)
+	at ui.dlg.c.m.init(SourceFile:48)
+	at ui.dlg.o.h.init(SourceFile:88)
+	at ui.dlg.o.h.<init>(SourceFile:83)
+	at ui.views.c.cF$a.iv(SourceFile:141)
+	at ui.dlg.c.bk.bgO(SourceFile:264)
+	at ui.dlg.c.bk$a.finished(SourceFile:1245)
+	at ui.frmwork.C.run(SourceFile:203)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:318)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at ui.frmwork.a.d.dispatchEvent(SourceFile:38)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
