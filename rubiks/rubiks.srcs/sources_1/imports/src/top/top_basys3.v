@@ -27,7 +27,7 @@ module top_basys3 (
         if (!por_count[4]) por_count <= por_count + 5'd1;
     wire rst = !por_count[4];
 
-    reg [2:0] stage;
+    reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
     wire [71:0] cube; // live cube from cube_engine
     wire [3:0] moves_left; // solve progress from solver
 
@@ -44,11 +44,6 @@ module top_basys3 (
     wire [7:0] camera_angle_id; //rn we have 256 camera angles
     wire row_done; // one-cycle pulse when a row buffer becomes valid
 
-    initial begin
-        
-        stage <= 3'b0;
-
-    end
 
 /* CLOCKS, will convert to tickgen later */
     wire clk_10hz;
@@ -205,7 +200,7 @@ module top_basys3 (
     tick_gen tick_gen (
         .clk(clk), .rst(rst),
         .en_25mhz(1'b1), .en_1khz(1'b1), .en_4hz(1'b1),
-        .tick_25mhz(), .tick_1khz(), .tick_4hz(tick_4hz),
+        .tick_25mhz(), .tick_1khz(), .tick_4hz(), // TEST: tick_4hz made below
         .clk_6p25mhz()
     );
 
@@ -226,9 +221,10 @@ module top_basys3 (
         .btn_pressed(btn_pressed), .sw_sync(sw),
         .scramble_done(scr_done), .solve_done(sol_done), .solve_err(sol_err),
         .stage(fsm_stage),
-        .scramble_start(scramble_start), .solve_start(solve_start),
-        .solve_cancel(solve_cancel), .cube_reset(cube_reset),
-        .manual_move(manual_move), .manual_valid(manual_valid)
+        // TEST: outputs disconnected, the board test FSM below drives them
+        .scramble_start(), .solve_start(),
+        .solve_cancel(), .cube_reset(),
+        .manual_move(), .manual_valid()
     );
 
     scrambler scrambler (
@@ -294,8 +290,66 @@ module top_basys3 (
         .m(32'd299999999),
         .slow_clock(clk_0p16hz)
     );
-    always @(posedge clk_0p16hz) begin
-        stage <= (stage == 3'd6) ? 3'd0 : stage + 1;
+
+/* BOARD TEST FSM (temporary, stands in for game_fsm) ------------------
+   btnC: scramble (25 moves at 4 Hz)   from START / SCRAMBLED / SOLVED / ERROR
+   btnR: solve                         from SCRAMBLED
+   btnL: reset cube to solved          any time (cancels a solve)
+   led[6:0] stage, led[10] scrambler busy, led[11] solver busy,
+   led[15:12] solve moves left
+   ------------------------------------------------------------------ */
+
+    // 4 Hz one-cycle tick (tick_gen is still empty)
+    reg [24:0] t4_count = 25'd0;
+    always @(posedge clk)
+        t4_count <= (t4_count == 25'd24_999_999) ? 25'd0 : t4_count + 25'd1;
+    assign tick_4hz = (t4_count == 25'd0);
+
+    reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
+    reg t_solve_cancel = 1'b0, t_cube_reset = 1'b0;
+    assign scramble_start = t_scramble_start;
+    assign solve_start = t_solve_start;
+    assign solve_cancel = t_solve_cancel;
+    assign cube_reset = t_cube_reset;
+    assign manual_move = MV_NONE;
+    assign manual_valid = 1'b0;
+
+    always @(posedge clk) begin
+        // command pulses last one cycle
+        t_scramble_start <= 1'b0;
+        t_solve_start <= 1'b0;
+        t_solve_cancel <= 1'b0;
+        t_cube_reset <= 1'b0;
+
+        if (rst) begin
+            stage <= STAGE_START;
+        end else if (btn_pressed[BTN_L]) begin
+            t_cube_reset <= 1'b1;
+            t_solve_cancel <= sol_busy;
+            stage <= STAGE_START;
+        end else begin
+            case (stage)
+                STAGE_START, STAGE_SCRAMBLED, STAGE_SOLVED, STAGE_ERROR:
+                    if (btn_pressed[BTN_C] && !scr_busy) begin
+                        t_scramble_start <= 1'b1;
+                        stage <= STAGE_AUTO_SCRAMBLE;
+                    end else if (btn_pressed[BTN_R] && stage == STAGE_SCRAMBLED) begin
+                        t_solve_start <= 1'b1;
+                        stage <= STAGE_SOLVING;
+                    end
+                STAGE_AUTO_SCRAMBLE:
+                    if (scr_done) stage <= STAGE_SCRAMBLED;
+                STAGE_SOLVING:
+                    if (sol_err) stage <= STAGE_ERROR;
+                    else if (sol_done) stage <= STAGE_SOLVED;
+                default:
+                    stage <= STAGE_START;
+            endcase
+        end
     end
+
+    assign led[10] = scr_busy;
+    assign led[11] = sol_busy;
+    assign led[15:12] = moves_left;
 
 endmodule
