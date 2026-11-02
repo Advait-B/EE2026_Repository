@@ -14,7 +14,8 @@ module solver (
     output sol_valid, // pulse when sol_move is ready
     output busy, // searching or playing back
     output done, err, // pulses: cube solved, timeout or cancel
-    output [3:0] moves_left // solution moves remaining
+    output [3:0] moves_left, // solution moves remaining
+    output [54:0] plan_left // queued solution moves, next at [4:0], unused = MV_NONE
 );
 `include "cube_defs.vh"
 
@@ -60,6 +61,7 @@ module solver (
     assign done = done_out;
     assign err = err_out;
     assign moves_left = left;
+    assign plan_left = plan_buf;
 
     always @(posedge clk) begin
         valid_out <= 1'b0;

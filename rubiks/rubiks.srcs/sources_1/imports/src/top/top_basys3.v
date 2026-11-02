@@ -30,6 +30,9 @@ module top_basys3 (
     reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
     wire [71:0] cube; // live cube from cube_engine
     wire [3:0] moves_left; // solve progress from solver
+    wire [54:0] plan_left; // queued solve moves from solver, for the VGA HUD
+    wire [4:0] move_req; // move sent to cube_engine
+    wire move_valid; // pulse when move_req is applied
 
     // oled menu & anode debugging
     wire [2:0] selectedoption;
@@ -159,6 +162,8 @@ module top_basys3 (
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
         .mouse_x(mouse_x), .mouse_y(mouse_y),
+        .move_req(move_req), .move_valid(move_valid),
+        .moves_left(moves_left), .plan_left(plan_left),
         .pix_x(pix_x), .pix_y(pix_y), // pixel pos, like oledx and oledy
 
         .frame_start(frame_start),
@@ -212,8 +217,6 @@ module top_basys3 (
     wire scr_valid, scr_busy, scr_done;
     wire [4:0] sol_move;
     wire sol_valid, sol_busy, sol_done, sol_err;
-    wire [4:0] move_req;
-    wire move_valid;
     wire [15:0] move_count;
 
     game_fsm game_fsm (
@@ -240,7 +243,7 @@ module top_basys3 (
         .tick_4hz(tick_4hz), .cube(cube),
         .sol_move(sol_move), .sol_valid(sol_valid),
         .busy(sol_busy), .done(sol_done), .err(sol_err),
-        .moves_left(moves_left)
+        .moves_left(moves_left), .plan_left(plan_left)
     );
 
     move_controller move_controller (
