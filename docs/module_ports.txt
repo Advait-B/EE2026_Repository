@@ -116,7 +116,8 @@ module solver(
     output sol_valid, // pulse when sol_move is ready
     output busy, // searching or playing back
     output done, err, // pulses: cube solved, timeout or cancel
-    output [3:0] moves_left // solution moves remaining
+    output [3:0] moves_left, // solution moves remaining
+    output [54:0] plan_left // queued solution moves, next at [4:0], unused = MV_NONE
 );
 
 module pattern_rom(
@@ -280,11 +281,33 @@ module vga_unit(
     input [2:0] pixel_colour, // cube colour from renderer
     input pixel_on_cube, // renderer hit flag
     input [9:0] mouse_x, mouse_y, // cursor position
+    input [4:0] move_req, // move sent to the engine (HUD history)
+    input move_valid, // pulse when move_req is applied
+    input [3:0] moves_left, // solve moves remaining
+    input [54:0] plan_left, // queued solution moves, next at [4:0]
     output [9:0] pix_x, pix_y, // current pixel position
     output frame_start, // pulse at start of vblank
     output [11:0] vga_rgb, // {r[3:0], g[3:0], b[3:0]}
     output hsync, vsync // VGA syncs
 );
+
+module hud_overlay(
+    input clk, // 100 MHz clock
+    input rst, // reset
+    input [2:0] stage, // current game stage
+    input [4:0] move_req, // move sent to the engine
+    input move_valid, // pulse when move_req is applied
+    input [3:0] moves_left, // solve moves remaining
+    input [54:0] plan_left, // queued solution moves, next move at [4:0]
+    input [9:0] pix_x, pix_y, // current VGA pixel position
+    output reg hud_on, // 1 = HUD owns this pixel
+    output reg [11:0] hud_rgb // HUD colour {r, g, b}
+);
+
+Instantiated inside vga_unit. Draws the stage header (name, MOVES nn/tt and a
+progress line), a hint line under the cube, and a footer of move chips. Counts
+moves itself from move_req/move_valid; the count resets on entering START,
+AUTO_SCRAMBLE, MANUAL_SCRAMBLE or SOLVING. vga_rgb priority: HUD, cube, black.
 
 module oled_unit(
     input clk, // 100 MHz clock

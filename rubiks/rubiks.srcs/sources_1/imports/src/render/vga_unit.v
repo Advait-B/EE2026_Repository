@@ -13,6 +13,10 @@ module vga_unit (
     input pixel_on_cube, // renderer hit flag
     input [9:0] mouse_x,
     input [9:0] mouse_y, // cursor position
+    input [4:0] move_req, // move sent to the engine (HUD history)
+    input move_valid, // pulse when move_req is applied
+    input [3:0] moves_left, // solve moves remaining
+    input [54:0] plan_left, // queued solution moves, next at [4:0]
     output [9:0] pix_x,
     output [9:0] pix_y, // current pixel position
     output reg frame_start, // pulse at start of vblank
@@ -27,7 +31,7 @@ module vga_unit (
         .vsync(vsync),
         .pix_x(pix_x),
         .pix_y(pix_y),
-        .video_on(1) //unused
+        .video_on() // unused, vga_unit computes its own video_on
     );
     always @(posedge clk_25MHz) begin
         if (frame_start) frame_start <= 0;
@@ -35,9 +39,23 @@ module vga_unit (
     end
     // like oled, the vga_helper will increment the values of pix_x and pix_y correctly
 
-    // right now cube_renderer_unit will give us a value of pixel_on_cube based on the
-    // value of pix_x and pix_y, so we just need to ASSIGN vga_rgb BASED ON pixel_on_cube
+    // HUD: header, hint line and move footer drawn over the cube
+    wire hud_on;
+    wire [11:0] hud_rgb;
+    hud_overlay hud_overlay (
+        .clk(clk), .rst(rst),
+        .stage(stage),
+        .move_req(move_req), .move_valid(move_valid),
+        .moves_left(moves_left), .plan_left(plan_left),
+        .pix_x(pix_x), .pix_y(pix_y),
+        .hud_on(hud_on), .hud_rgb(hud_rgb)
+    );
 
-    assign vga_rgb = colour_to_rgb(pixel_colour); //rgb values for vga defined in cube_defs.vh
+    // priority: HUD, then cube, then black background; black outside the visible area
+    wire video_on = (pix_x < SCREEN_W) && (pix_y < SCREEN_H);
+    assign vga_rgb = !video_on     ? 12'h000 :
+                     hud_on        ? hud_rgb :
+                     pixel_on_cube ? colour_to_rgb(pixel_colour) : //rgb values for vga defined in cube_defs.vh
+                                     12'h000;
 
 endmodule
