@@ -193,8 +193,8 @@ module top_basys3 (
         //camera yaw goes from 0 to 15
         //camera pitch goes from 0 to 15
         //camera_angle_id = pitch * 16 + yaw
-        camera_yaw <= ~mouse_r ? camera_yaw : mouse_dx == 11'b0 ? camera_yaw : mouse_dx[8] ? camera_yaw - 1 : camera_yaw + 1;
-        camera_pitch <= ~mouse_r ? camera_pitch : mouse_dy == 11'b0 ? camera_pitch : mouse_dy[8] ? camera_pitch + 1 : camera_pitch - 1;
+        camera_yaw <= ~mouse_r ? camera_yaw : mouse_dx == 11'b0 ? camera_yaw : mouse_dx[10] ? camera_yaw - 1 : camera_yaw + 1;
+        camera_pitch <= ~mouse_r ? camera_pitch : mouse_dy == 11'b0 ? camera_pitch : mouse_dy[10] ? camera_pitch + 1 : camera_pitch - 1;
     end
     assign camera_angle_id = {camera_pitch, camera_yaw}; // = (pitch << 4) + yaw
 
