@@ -21,10 +21,15 @@ module top_basys3 (
 `include "cube_defs.vh"
 
     /* GLOBAL WIRES */
-    wire rst;
+    // power-on reset: rst is high for the first 16 clocks after configuration
+    reg [4:0] por_count = 5'd0;
+    always @(posedge clk)
+        if (!por_count[4]) por_count <= por_count + 5'd1;
+    wire rst = !por_count[4];
+
     reg [2:0] stage;
-    reg [71:0] cube = SOLVED_CUBE; // for the 2D net view
-    reg [3:0] moves_left; // solve progress
+    wire [71:0] cube; // live cube from cube_engine
+    wire [3:0] moves_left; // solve progress from solver
 
     // oled menu & anode debugging
     wire [2:0] selectedoption;
@@ -186,17 +191,74 @@ module top_basys3 (
         .row_done(row_done) // one-cycle pulse when a row buffer becomes valid
     );
 
-    // CHANGE CAMERA ANGLE BASED ON MOUSE_DX AND MOUSE_DY
-    reg [3:0] camera_yaw = 4'b0;
-    reg [3:0] camera_pitch = 4'b0;
-    always @(posedge mouse_event) begin
-        //camera yaw goes from 0 to 15
-        //camera pitch goes from 0 to 15
-        //camera_angle_id = pitch * 16 + yaw
-        camera_yaw <= ~mouse_r ? camera_yaw : mouse_dx == 11'b0 ? camera_yaw : mouse_dx[10] ? camera_yaw - 1 : camera_yaw + 1;
-        camera_pitch <= ~mouse_r ? camera_pitch : mouse_dy == 11'b0 ? camera_pitch : mouse_dy[10] ? camera_pitch + 1 : camera_pitch - 1;
-    end
-    assign camera_angle_id = {camera_pitch, camera_yaw}; // = (pitch << 4) + yaw
+    // CHANGE CAMERA ANGLE BASED ON MOUSE_DX AND MOUSE_DY (right-drag)
+    camera_unit camera_unit (
+        .clk(clk), .rst(rst), .stage(stage),
+        .btn_pressed(btn_pressed),
+        .mouse_r(mouse_r), .mouse_dx(mouse_dx), .mouse_dy(mouse_dy),
+        .mouse_event(mouse_event),
+        .camera_angle_id(camera_angle_id)
+    );
+
+    // CUBE, SCRAMBLE AND SOLVE
+    wire tick_4hz; // scramble/solve playback rate
+    tick_gen tick_gen (
+        .clk(clk), .rst(rst),
+        .en_25mhz(1'b1), .en_1khz(1'b1), .en_4hz(1'b1),
+        .tick_25mhz(), .tick_1khz(), .tick_4hz(tick_4hz),
+        .clk_6p25mhz()
+    );
+
+    wire [2:0] fsm_stage; // TODO: drive `stage` from this once game_fsm is done
+    wire scramble_start, solve_start, solve_cancel, cube_reset;
+    wire [4:0] manual_move;
+    wire manual_valid;
+    wire [4:0] scr_move;
+    wire scr_valid, scr_busy, scr_done;
+    wire [4:0] sol_move;
+    wire sol_valid, sol_busy, sol_done, sol_err;
+    wire [4:0] move_req;
+    wire move_valid;
+    wire [15:0] move_count;
+
+    game_fsm game_fsm (
+        .clk(clk), .rst(rst),
+        .btn_pressed(btn_pressed), .sw_sync(sw),
+        .scramble_done(scr_done), .solve_done(sol_done), .solve_err(sol_err),
+        .stage(fsm_stage),
+        .scramble_start(scramble_start), .solve_start(solve_start),
+        .solve_cancel(solve_cancel), .cube_reset(cube_reset),
+        .manual_move(manual_move), .manual_valid(manual_valid)
+    );
+
+    scrambler scrambler (
+        .clk(clk), .rst(rst),
+        .start(scramble_start), .tick_4hz(tick_4hz),
+        .scr_move(scr_move), .scr_valid(scr_valid),
+        .busy(scr_busy), .done(scr_done)
+    );
+
+    solver solver (
+        .clk(clk), .rst(rst),
+        .start(solve_start), .cancel(solve_cancel),
+        .tick_4hz(tick_4hz), .cube(cube),
+        .sol_move(sol_move), .sol_valid(sol_valid),
+        .busy(sol_busy), .done(sol_done), .err(sol_err),
+        .moves_left(moves_left)
+    );
+
+    move_controller move_controller (
+        .clk(clk), .rst(rst), .stage(stage),
+        .manual_move(manual_move), .scr_move(scr_move), .sol_move(sol_move),
+        .manual_valid(manual_valid), .scr_valid(scr_valid), .sol_valid(sol_valid),
+        .move_req(move_req), .move_valid(move_valid)
+    );
+
+    cube_engine cube_engine (
+        .clk(clk), .rst(rst), .cube_reset(cube_reset),
+        .move_req(move_req), .move_valid(move_valid),
+        .cube(cube), .move_count(move_count)
+    );
 
 
 /* LOGIC MODULES END */
