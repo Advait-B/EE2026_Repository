@@ -27,7 +27,7 @@ module top_basys3 (
         if (!por_count[4]) por_count <= por_count + 5'd1;
     wire rst = !por_count[4];
 
-    reg [2:0] stage;
+    reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
     wire [71:0] cube; // live cube from cube_engine
     wire [3:0] moves_left; // solve progress from solver
     wire [54:0] plan_left; // queued solve moves from solver, for the VGA HUD
@@ -47,11 +47,6 @@ module top_basys3 (
     wire [7:0] camera_angle_id; //rn we have 256 camera angles
     wire row_done; // one-cycle pulse when a row buffer becomes valid
 
-    initial begin
-        
-        stage <= 3'b0;
-
-    end
 
 /* CLOCKS, will convert to tickgen later */
     wire clk_10hz;
@@ -210,7 +205,7 @@ module top_basys3 (
     tick_gen tick_gen (
         .clk(clk), .rst(rst),
         .en_25mhz(1'b1), .en_1khz(1'b1), .en_4hz(1'b1),
-        .tick_25mhz(), .tick_1khz(), .tick_4hz(tick_4hz),
+        .tick_25mhz(), .tick_1khz(), .tick_4hz(), // TEST: tick_4hz made below
         .clk_6p25mhz()
     );
 
@@ -229,9 +224,10 @@ module top_basys3 (
         .btn_pressed(btn_pressed), .sw_sync(sw),
         .scramble_done(scr_done), .solve_done(sol_done), .solve_err(sol_err),
         .stage(fsm_stage),
-        .scramble_start(scramble_start), .solve_start(solve_start),
-        .solve_cancel(solve_cancel), .cube_reset(cube_reset),
-        .manual_move(manual_move), .manual_valid(manual_valid)
+        // TEST: outputs disconnected, the board test FSM below drives them
+        .scramble_start(), .solve_start(),
+        .solve_cancel(), .cube_reset(),
+        .manual_move(), .manual_valid()
     );
 
     scrambler scrambler (
@@ -297,8 +293,94 @@ module top_basys3 (
         .m(32'd299999999),
         .slow_clock(clk_0p16hz)
     );
-    always @(posedge clk_0p16hz) begin
-        stage <= (stage == 3'd6) ? 3'd0 : stage + 1;
+
+/* BOARD TEST FSM (temporary, stands in for game_fsm) ------------------
+   START          -- btnC, menu option 1 --> AUTO_SCRAMBLE
+   START          -- btnC, menu option 2 --> MANUAL_SCRAMBLE
+   AUTO_SCRAMBLE  -- scrambler done      --> SCRAMBLED
+   MANUAL_SCRAMBLE-- btnC                --> SCRAMBLED
+   SCRAMBLED      -- btnC                --> SOLVING
+   SOLVING        -- solver done         --> SOLVED   (solver error --> ERROR)
+   SOLVED / ERROR -- btnC                --> START
+   In MANUAL_SCRAMBLE: pick a face with sw8-sw13 = U R F D L B (lowest
+   switch wins), then btnR = clockwise, btnL = anticlockwise.
+   btnU / btnD move the OLED menu (selectedoption) as before.
+   led[6:0] stage, led[10] scrambler busy, led[11] solver busy,
+   led[15:12] solve moves left
+   ------------------------------------------------------------------ */
+
+    // 4 Hz one-cycle tick (tick_gen is still empty)
+    reg [24:0] t4_count = 25'd0;
+    always @(posedge clk)
+        t4_count <= (t4_count == 25'd24_999_999) ? 25'd0 : t4_count + 25'd1;
+    assign tick_4hz = (t4_count == 25'd0);
+
+    reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
+    assign scramble_start = t_scramble_start;
+    assign solve_start = t_solve_start;
+    assign solve_cancel = 1'b0;
+    assign cube_reset = 1'b0;
+    reg [4:0] t_manual_move = MV_NONE;
+    reg t_manual_valid = 1'b0;
+    assign manual_move = t_manual_move;
+    assign manual_valid = t_manual_valid;
+
+    // manual turns: face from sw8-sw13, move code = face*3 + turn
+    wire [2:0] manual_face = sw[8]  ? FACE_U :
+                             sw[9]  ? FACE_R :
+                             sw[10] ? FACE_F :
+                             sw[11] ? FACE_D :
+                             sw[12] ? FACE_L :
+                             sw[13] ? FACE_B : 3'd7; // 7 = no face picked
+    wire [1:0] manual_turn = btn_pressed[BTN_R] ? TURN_CW : TURN_CCW;
+    wire manual_btn = btn_pressed[BTN_R] | btn_pressed[BTN_L];
+    wire btnc = btn_pressed[BTN_C];
+
+    always @(posedge clk) begin
+        // command pulses last one cycle
+        t_scramble_start <= 1'b0;
+        t_solve_start <= 1'b0;
+        t_manual_valid <= 1'b0;
+
+        if (rst) begin
+            stage <= STAGE_START;
+        end else begin
+            case (stage)
+                STAGE_START:
+                    if (btnc && selectedoption == 3'd1 && !scr_busy) begin
+                        t_scramble_start <= 1'b1;
+                        stage <= STAGE_AUTO_SCRAMBLE;
+                    end else if (btnc && selectedoption == 3'd2) begin
+                        stage <= STAGE_MANUAL_SCRAMBLE;
+                    end
+                STAGE_AUTO_SCRAMBLE:
+                    if (scr_done) stage <= STAGE_SCRAMBLED;
+                STAGE_MANUAL_SCRAMBLE:
+                    if (btnc) begin
+                        stage <= STAGE_SCRAMBLED;
+                    end else if (manual_btn && manual_face != 3'd7) begin
+                        // move_controller only passes manual moves in this stage
+                        t_manual_move <= {manual_face, 1'b0} + manual_face + manual_turn;
+                        t_manual_valid <= 1'b1;
+                    end
+                STAGE_SCRAMBLED:
+                    if (btnc) begin
+                        t_solve_start <= 1'b1;
+                        stage <= STAGE_SOLVING;
+                    end
+                STAGE_SOLVING:
+                    if (sol_err) stage <= STAGE_ERROR;
+                    else if (sol_done) stage <= STAGE_SOLVED;
+                STAGE_SOLVED, STAGE_ERROR:
+                    if (btnc) stage <= STAGE_START;
+                default:
+                    stage <= STAGE_START;
+            endcase
+        end
     end
+
+    assign led[10] = scr_busy;
+    assign led[11] = sol_busy;
+    assign led[15:12] = moves_left;
 
 endmodule
