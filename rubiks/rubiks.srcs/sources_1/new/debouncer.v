@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
 module debouncer(
+    input clk,
     input  wire clk_db,
 //    input  wire reset,          // synchronous, active high
     input  wire btn_in,
@@ -22,7 +23,12 @@ module debouncer(
             if (btn_in == previous_sample)
                 button_clean <= btn_in;
             previous_sample <= btn_in;
-            
+                
+        end
+    end
+    
+    always @(posedge clk) begin
+    
             if (button_clean) begin
                 if (button_was_pressed) button_pressed <= 0;
                 else begin
@@ -34,8 +40,7 @@ module debouncer(
                 button_pressed <= 0;
                 button_was_pressed <= 0;
             end
-                
-        end
+    
     end
 
 endmodule

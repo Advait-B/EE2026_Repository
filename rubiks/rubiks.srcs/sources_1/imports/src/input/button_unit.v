@@ -6,51 +6,63 @@
 
 module button_unit (
     input clk, // 100 MHz clock
+    input debounce_clk,
     input [4:0] btn_raw, // raw buttons, {C, U, L, R, D}
-    output debugled,
+    // output debugled,
     output [4:0] btn_held, // debounced level
-    output [4:0] btn_pressed // 1-cycle pulse on press
+    output [4:0] btn_pressed, // 1-cycle pulse on press
+    output reg [2:0] selectedoption
 );
 `include "cube_defs.vh"
-    wire clk_5hz;
-    flexclock clk_5hz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd9999999),
-        .slow_clock(clk_5hz)
-    );
 
-    assign debugled = clk_5hz;
+    initial begin
+        selectedoption <= 3'b1;
+    end
+
+    // assign debugled = debounce_clk;
     
     debouncer DBbtnC(
-        clk_5hz,
+        clk,
+        debounce_clk,
         btn_raw[4],
         btn_held[4],
         btn_pressed[4]
     );
     debouncer DBbtnU(
-        clk_5hz,
+        clk,
+        debounce_clk,
         btn_raw[3],
         btn_held[3],
         btn_pressed[3]
     );
     debouncer DBbtnL(
-        clk_5hz,
+        clk,
+        debounce_clk,
         btn_raw[2],
         btn_held[2],
         btn_pressed[2]
     );
     debouncer DBbtnR(
-        clk_5hz,
+        clk,
+        debounce_clk,
         btn_raw[1],
         btn_held[1],
         btn_pressed[1]
     );
     debouncer DBbtnD(
-        clk_5hz,
+        clk,
+        debounce_clk,
         btn_raw[0],
         btn_held[0],
         btn_pressed[0]
     );
+
+    always @(posedge clk) begin
+    
+        if (btn_pressed[3]) selectedoption <= selectedoption == 3'd1 ? 3'd6 : selectedoption-1; //up button
+        else if (btn_pressed[0]) selectedoption <= selectedoption == 3'd6 ? 3'd1 : selectedoption+1; //down button
+
+    end
+
 
 endmodule

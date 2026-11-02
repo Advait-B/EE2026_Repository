@@ -142,13 +142,13 @@
     // -----------------------------------------------------------------
     // Game stages [2:0]
     // -----------------------------------------------------------------
-    localparam [2:0] ST_START           = 3'd0;
-    localparam [2:0] ST_AUTO_SCRAMBLE   = 3'd1;
-    localparam [2:0] ST_MANUAL_SCRAMBLE = 3'd2;
-    localparam [2:0] ST_SCRAMBLED       = 3'd3;
-    localparam [2:0] ST_SOLVING         = 3'd4;
-    localparam [2:0] ST_SOLVED          = 3'd5;
-    localparam [2:0] ST_ERROR           = 3'd6;   // solver failed or timed out
+    localparam [2:0] STAGE_START           = 3'd0;
+    localparam [2:0] STAGE_AUTO_SCRAMBLE   = 3'd1;
+    localparam [2:0] STAGE_MANUAL_SCRAMBLE = 3'd2;
+    localparam [2:0] STAGE_SCRAMBLED = 3'd3;
+    localparam [2:0] STAGE_SOLVING = 3'd4;
+    localparam [2:0] STAGE_SOLVED = 3'd5;
+    localparam [2:0] STAGE_ERROR = 3'd6;
 
     // -----------------------------------------------------------------
     // Button bit positions in btn[4:0] = {C, U, L, R, D}
