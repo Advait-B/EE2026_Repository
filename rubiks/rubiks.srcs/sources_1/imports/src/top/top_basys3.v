@@ -273,7 +273,7 @@ module top_basys3 (
     assign led[2] = (stage == 3'd2) ? 1 : 0;
     assign led[3] = (stage == 3'd3) ? 1 : 0;
     assign led[4] = (stage == 3'd4) ? clk_2hz : 0;
-    assign led[5] = (stage == 3'd5) || (stage == STAGE_MANUAL_SCRAMBLE && cube == SOLVED_CUBE);
+    assign led[5] = (stage == 3'd5) ? 1 : 0;
     assign led[6] = (stage == 3'd6) ? clk_10hz : 0; //error
 
     assign led[7] = btn_pressed[4];
@@ -292,13 +292,16 @@ module top_basys3 (
     );
 
 /* BOARD TEST FSM (temporary, stands in for game_fsm) ------------------
-   btnC: scramble (25 moves at 4 Hz)   from START / SCRAMBLED / SOLVED / ERROR
-   btnR: solve                         from SCRAMBLED
-   btnL: reset cube to solved          any time (cancels a solve)
-   MANUAL MODE (sw15 up): pick a face with sw8-sw13 = U R F D L B
-   (lowest switch wins), then btnC = clockwise, btnR = anticlockwise,
-   btnL = 180. Flip sw15 down to leave; btnR then solves from there.
-   led[5] also lights in manual mode when the cube is solved.
+   START          -- btnC, menu option 1 --> AUTO_SCRAMBLE
+   START          -- btnC, menu option 2 --> MANUAL_SCRAMBLE
+   AUTO_SCRAMBLE  -- scrambler done      --> SCRAMBLED
+   MANUAL_SCRAMBLE-- btnC                --> SCRAMBLED
+   SCRAMBLED      -- btnC                --> SOLVING
+   SOLVING        -- solver done         --> SOLVED   (solver error --> ERROR)
+   SOLVED / ERROR -- btnC                --> START
+   In MANUAL_SCRAMBLE: pick a face with sw8-sw13 = U R F D L B (lowest
+   switch wins), then btnR = clockwise, btnL = anticlockwise.
+   btnU / btnD move the OLED menu (selectedoption) as before.
    led[6:0] stage, led[10] scrambler busy, led[11] solver busy,
    led[15:12] solve moves left
    ------------------------------------------------------------------ */
@@ -310,67 +313,63 @@ module top_basys3 (
     assign tick_4hz = (t4_count == 25'd0);
 
     reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
-    reg t_solve_cancel = 1'b0, t_cube_reset = 1'b0;
     assign scramble_start = t_scramble_start;
     assign solve_start = t_solve_start;
-    assign solve_cancel = t_solve_cancel;
-    assign cube_reset = t_cube_reset;
+    assign solve_cancel = 1'b0;
+    assign cube_reset = 1'b0;
     reg [4:0] t_manual_move = MV_NONE;
     reg t_manual_valid = 1'b0;
     assign manual_move = t_manual_move;
     assign manual_valid = t_manual_valid;
 
-    // manual mode: face from sw8-sw13, move code = face*3 + turn
-    wire manual_mode = sw[15];
+    // manual turns: face from sw8-sw13, move code = face*3 + turn
     wire [2:0] manual_face = sw[8]  ? FACE_U :
                              sw[9]  ? FACE_R :
                              sw[10] ? FACE_F :
                              sw[11] ? FACE_D :
                              sw[12] ? FACE_L :
                              sw[13] ? FACE_B : 3'd7; // 7 = no face picked
-    wire [1:0] manual_turn = btn_pressed[BTN_C] ? TURN_CW :
-                             btn_pressed[BTN_R] ? TURN_CCW : TURN_180;
-    wire manual_btn = btn_pressed[BTN_C] | btn_pressed[BTN_R] | btn_pressed[BTN_L];
+    wire [1:0] manual_turn = btn_pressed[BTN_R] ? TURN_CW : TURN_CCW;
+    wire manual_btn = btn_pressed[BTN_R] | btn_pressed[BTN_L];
+    wire btnc = btn_pressed[BTN_C];
 
     always @(posedge clk) begin
         // command pulses last one cycle
         t_scramble_start <= 1'b0;
         t_solve_start <= 1'b0;
-        t_solve_cancel <= 1'b0;
-        t_cube_reset <= 1'b0;
         t_manual_valid <= 1'b0;
 
         if (rst) begin
             stage <= STAGE_START;
-        end else if (stage == STAGE_MANUAL_SCRAMBLE) begin
-            // move_controller only passes manual moves in this stage
-            if (!manual_mode) begin
-                stage <= STAGE_SCRAMBLED;
-            end else if (manual_btn && manual_face != 3'd7) begin
-                t_manual_move <= {manual_face, 1'b0} + manual_face + manual_turn;
-                t_manual_valid <= 1'b1;
-            end
-        end else if (manual_mode && stage != STAGE_AUTO_SCRAMBLE && stage != STAGE_SOLVING) begin
-            stage <= STAGE_MANUAL_SCRAMBLE;
-        end else if (btn_pressed[BTN_L]) begin
-            t_cube_reset <= 1'b1;
-            t_solve_cancel <= sol_busy;
-            stage <= STAGE_START;
         end else begin
             case (stage)
-                STAGE_START, STAGE_SCRAMBLED, STAGE_SOLVED, STAGE_ERROR:
-                    if (btn_pressed[BTN_C] && !scr_busy) begin
+                STAGE_START:
+                    if (btnc && selectedoption == 3'd1 && !scr_busy) begin
                         t_scramble_start <= 1'b1;
                         stage <= STAGE_AUTO_SCRAMBLE;
-                    end else if (btn_pressed[BTN_R] && stage == STAGE_SCRAMBLED && cube != SOLVED_CUBE) begin
-                        t_solve_start <= 1'b1;
-                        stage <= STAGE_SOLVING;
+                    end else if (btnc && selectedoption == 3'd2) begin
+                        stage <= STAGE_MANUAL_SCRAMBLE;
                     end
                 STAGE_AUTO_SCRAMBLE:
                     if (scr_done) stage <= STAGE_SCRAMBLED;
+                STAGE_MANUAL_SCRAMBLE:
+                    if (btnc) begin
+                        stage <= STAGE_SCRAMBLED;
+                    end else if (manual_btn && manual_face != 3'd7) begin
+                        // move_controller only passes manual moves in this stage
+                        t_manual_move <= {manual_face, 1'b0} + manual_face + manual_turn;
+                        t_manual_valid <= 1'b1;
+                    end
+                STAGE_SCRAMBLED:
+                    if (btnc) begin
+                        t_solve_start <= 1'b1;
+                        stage <= STAGE_SOLVING;
+                    end
                 STAGE_SOLVING:
                     if (sol_err) stage <= STAGE_ERROR;
                     else if (sol_done) stage <= STAGE_SOLVED;
+                STAGE_SOLVED, STAGE_ERROR:
+                    if (btnc) stage <= STAGE_START;
                 default:
                     stage <= STAGE_START;
             endcase
