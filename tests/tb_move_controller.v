@@ -52,7 +52,7 @@ module tb_move_controller;
     initial begin
         clk = 1'b0;
         rst = 1'b1;
-        stage = ST_START;
+        stage = STAGE_START;
         manual_move = MV_U;
         scr_move = MV_F;
         sol_move = MV_B;
@@ -62,9 +62,9 @@ module tb_move_controller;
         errors = 0;
         checks = 0;
 
-        if (ST_START !== 3'd0 || ST_AUTO_SCRAMBLE !== 3'd1 ||
-            ST_MANUAL_SCRAMBLE !== 3'd2 || ST_SCRAMBLED !== 3'd3 ||
-            ST_SOLVING !== 3'd4 || ST_SOLVED !== 3'd5 || ST_ERROR !== 3'd6) begin
+        if (STAGE_START !== 3'd0 || STAGE_AUTO_SCRAMBLE !== 3'd1 ||
+            STAGE_MANUAL_SCRAMBLE !== 3'd2 || STAGE_SCRAMBLED !== 3'd3 ||
+            STAGE_SOLVING !== 3'd4 || STAGE_SOLVED !== 3'd5 || STAGE_ERROR !== 3'd6) begin
             $display("FAIL: shared stage constants do not match the group stage plan");
             errors = errors + 1;
         end
@@ -73,15 +73,15 @@ module tb_move_controller;
         expect_output(MV_NONE, 1'b0, "reset blocks all sources");
 
         rst = 1'b0;
-        stage = ST_START;
+        stage = STAGE_START;
         expect_output(MV_NONE, 1'b0, "start stage accepts no move source");
 
-        stage = ST_AUTO_SCRAMBLE;
+        stage = STAGE_AUTO_SCRAMBLE;
         expect_output(MV_F, 1'b1, "automatic scramble stage accepts scrambler move");
         scr_valid = 1'b0;
         expect_output(MV_NONE, 1'b0, "automatic scramble waits when scrambler is invalid");
 
-        stage = ST_MANUAL_SCRAMBLE;
+        stage = STAGE_MANUAL_SCRAMBLE;
         scr_valid = 1'b1;
         expect_output(MV_U, 1'b1, "manual scramble stage accepts manual move");
         manual_move = 5'd18;
@@ -90,12 +90,12 @@ module tb_move_controller;
         manual_valid = 1'b0;
         expect_output(MV_NONE, 1'b0, "manual scramble waits when manual input is invalid");
 
-        stage = ST_SCRAMBLED;
+        stage = STAGE_SCRAMBLED;
         manual_valid = 1'b1;
         sol_valid = 1'b1;
         expect_output(MV_NONE, 1'b0, "scrambled stage accepts no cube moves");
 
-        stage = ST_SOLVING;
+        stage = STAGE_SOLVING;
         manual_valid = 1'b0;
         expect_output(MV_B, 1'b1, "solving stage accepts solver move");
 
@@ -113,14 +113,14 @@ module tb_move_controller;
         expect_output(MV_NONE, 1'b0, "invalid solver code is rejected");
 
         scr_valid = 1'b1;
-        stage = ST_START;
+        stage = STAGE_START;
         manual_move = MV_U;
         manual_valid = 1'b1;
         sol_move = MV_B;
         sol_valid = 1'b1;
-        stage = ST_SOLVED;
+        stage = STAGE_SOLVED;
         expect_output(MV_NONE, 1'b0, "solved stage rejects move requests");
-        stage = ST_ERROR;
+        stage = STAGE_ERROR;
         expect_output(MV_NONE, 1'b0, "error stage rejects move requests");
 
         if (errors == 0)

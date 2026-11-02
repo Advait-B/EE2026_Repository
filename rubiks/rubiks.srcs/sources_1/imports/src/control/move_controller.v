@@ -30,21 +30,21 @@ module move_controller (
 
         if (!rst) begin
             case (stage)
-                ST_AUTO_SCRAMBLE: begin
+                STAGE_AUTO_SCRAMBLE: begin
                     if (scr_valid && move_is_valid(scr_move)) begin
                         selected_move = scr_move;
                         selected_valid = 1'b1;
                     end
                 end
 
-                ST_MANUAL_SCRAMBLE: begin
+                STAGE_MANUAL_SCRAMBLE: begin
                     if (manual_valid && move_is_valid(manual_move)) begin
                         selected_move = manual_move;
                         selected_valid = 1'b1;
                     end
                 end
 
-                ST_SOLVING: begin
+                STAGE_SOLVING: begin
                     if (manual_valid && move_is_valid(manual_move)) begin
                         selected_move = manual_move;
                         selected_valid = 1'b1;
@@ -54,7 +54,7 @@ module move_controller (
                     end
                 end
 
-                ST_START, ST_SCRAMBLED, ST_SOLVED, ST_ERROR: begin
+                STAGE_START, STAGE_SCRAMBLED, STAGE_SOLVED, STAGE_ERROR: begin
                     selected_move = MV_NONE;
                     selected_valid = 1'b0;
                 end
