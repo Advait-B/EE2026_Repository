@@ -44,6 +44,7 @@
     <Option Name="SimulatorGccVersionRiviera" Val="9.3.0"/>
     <Option Name="SimulatorGccVersionActiveHdl" Val="9.3.0"/>
     <Option Name="BoardPart" Val=""/>
+    <Option Name="SourceMgmtMode" Val="DisplayOnly"/>
     <Option Name="ActiveSimSet" Val="sim_1"/>
     <Option Name="DefaultLib" Val="xil_defaultlib"/>
     <Option Name="ProjectType" Val="Default"/>
@@ -101,11 +102,10 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PSRCDIR/sources_1/imports/src/display/led_unit.v">
+      <File Path="$PSRCDIR/sources_1/imports/src/top/top_basys3.v">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
-          <Attr Name="ImportPath" Val="$PPRDIR/../src/display/led_unit.v"/>
-          <Attr Name="ImportTime" Val="1792342434"/>
+          <Attr Name="ImportPath" Val="$PPRDIR/../src/top/top_basys3.v"/>
+          <Attr Name="ImportTime" Val="1792344748"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -247,6 +247,15 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
+      <File Path="$PSRCDIR/sources_1/imports/src/display/led_unit.v">
+        <FileInfo>
+          <Attr Name="ImportPath" Val="$PPRDIR/../src/display/led_unit.v"/>
+          <Attr Name="ImportTime" Val="1792342434"/>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PSRCDIR/sources_1/imports/src/input/mouse_unit.v">
         <FileInfo>
           <Attr Name="ImportPath" Val="$PPRDIR/../src/input/mouse_unit.v"/>
@@ -379,15 +388,6 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PSRCDIR/sources_1/imports/src/top/top_basys3.v">
-        <FileInfo>
-          <Attr Name="ImportPath" Val="$PPRDIR/../src/top/top_basys3.v"/>
-          <Attr Name="ImportTime" Val="1792344748"/>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
         <Option Name="TopModule" Val="top_basys3"/>
@@ -411,7 +411,7 @@
       <Filter Type="Srcs"/>
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
-        <Option Name="TopModule" Val="top_basys3"/>
+        <Option Name="TopModule" Val="cube_renderer"/>
         <Option Name="TopLib" Val="xil_defaultlib"/>
         <Option Name="TopAutoSet" Val="TRUE"/>
         <Option Name="TransportPathDelay" Val="0"/>

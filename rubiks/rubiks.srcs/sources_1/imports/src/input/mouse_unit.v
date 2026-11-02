@@ -57,12 +57,14 @@ module mouse_unit (
         else begin
 
             /* make it so that x and y directly depend on dx and dy */
-
-            mouse_dx <= ($signed({1'b0, raw_input_x}) - $signed({1'b0, 10'd512})) >>> ~mouse_m;
+            if (mouse_m)    mouse_dx <= ($signed({1'b0, raw_input_x}) - $signed({1'b0, 10'd512})) >>> 3;
+            else            mouse_dx <= ($signed({1'b0, raw_input_x}) - $signed({1'b0, 10'd512})) >>> 2;
+            
             if (temp_mouse_x[10])   mouse_x <= 10'd0;
             else                    mouse_x <= (temp_mouse_x[9:0] >= SCREEN_W) ? SCREEN_W-1 : temp_mouse_x[9:0]; 
 
-            mouse_dy <= ($signed({1'b0, raw_input_y}) - $signed({1'b0, 10'd512})) >>> ~mouse_m;
+            if (mouse_m)    mouse_dy <= ($signed({1'b0, raw_input_y}) - $signed({1'b0, 10'd512})) >>> 3;
+            else            mouse_dy <= ($signed({1'b0, raw_input_y}) - $signed({1'b0, 10'd512})) >>> 2;
             if (temp_mouse_y[10])   mouse_y <= 10'd0;
             else                    mouse_y <= (temp_mouse_y[9:0] >= SCREEN_H) ? SCREEN_H-1 : temp_mouse_y[9:0]; 
 
