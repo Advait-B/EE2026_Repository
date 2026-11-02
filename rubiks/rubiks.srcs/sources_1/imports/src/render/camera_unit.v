@@ -12,7 +12,7 @@ module camera_unit (
     input mouse_l, // left button held (drag)
     input signed [8:0] mouse_dx, mouse_dy, // movement this packet
     input mouse_event, // new mouse packet
-    output [6:0] view // current camera angle index
+    output [7:0] camera_angle_id // {pitch_bin[3:0], yaw_bin[3:0]}, 0-255
 );
 `include "cube_defs.vh"
 
