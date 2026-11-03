@@ -33,9 +33,17 @@ module vga_unit (
         .pix_y(pix_y),
         .video_on() // unused, vga_unit computes its own video_on
     );
-    always @(posedge tick_25mhz) begin
-        if (frame_start) frame_start <= 0;
-        else if (!vsync) frame_start <= 1;
+    // frame_start: one clk-cycle pulse on the falling edge of vsync (start of retrace),
+    // so the renderer and scanline buffers reset once per frame, not on every tick of vsync low
+    reg vsync_q;
+    always @(posedge clk) begin
+        if (rst) begin
+            vsync_q <= 1'b1;
+            frame_start <= 1'b0;
+        end else begin
+            vsync_q <= vsync;
+            frame_start <= vsync_q && !vsync;
+        end
     end
     // like oled, the vga_helper will increment the values of pix_x and pix_y correctly
 
