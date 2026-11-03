@@ -54,10 +54,10 @@ module vga_helper (
             v_count <= 0;
         end
 
-        else if (h_count == H_MAX)
+        else if (h_count == H_MAX - 1)
         begin
             h_count <= 0;
-            if (v_count == V_MAX)   v_count <= 0;               //bottom right hit, reset to 0,0
+            if (v_count == V_MAX - 1)   v_count <= 0;               //bottom right hit, reset to 0,0
             else                    v_count <= v_count + 1;     //right side hit, so go down
         end
 
