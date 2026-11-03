@@ -49,15 +49,15 @@ module camera_unit (
 
             if (accumulated_step_y > 11'sd35) begin
                 accumulated_step_y <= 11'sd0;
-                // if (4'd6 <= camera_yaw && camera_yaw <= 4'd10) camera_pitch <= camera_pitch - 4'd1;
-                // else if ((4'd0 <= camera_yaw && camera_yaw <= 4'd2) || camera_yaw == 4'd14 || camera_yaw == 4'd15) camera_pitch <= camera_pitch + 4'd1; 
-                camera_pitch <= camera_pitch - 4'd1;
+                if (4'd6 <= camera_yaw && camera_yaw <= 4'd10) camera_pitch <= camera_pitch - 4'd1;
+                else if ((4'd0 <= camera_yaw && camera_yaw <= 4'd2) || camera_yaw == 4'd14 || camera_yaw == 4'd15) camera_pitch <= camera_pitch + 4'd1; 
+                // camera_pitch <= camera_pitch - 4'd1;
             end
             else if (accumulated_step_y < -11'sd35) begin
                 accumulated_step_y <= 11'sd0;
-                // if (4'd6 <= camera_yaw && camera_yaw <= 4'd10) camera_pitch <= camera_pitch + 4'd1;
-                // else if ((4'd0 <= camera_yaw && camera_yaw <= 4'd2) || camera_yaw == 4'd14 || camera_yaw == 4'd15) camera_pitch <= camera_pitch - 4'd1;
-                camera_pitch <= camera_pitch + 4'd1;
+                if (4'd6 <= camera_yaw && camera_yaw <= 4'd10) camera_pitch <= camera_pitch + 4'd1;
+                else if ((4'd0 <= camera_yaw && camera_yaw <= 4'd2) || camera_yaw == 4'd14 || camera_yaw == 4'd15) camera_pitch <= camera_pitch - 4'd1;
+                // camera_pitch <= camera_pitch + 4'd1;
             end
             else accumulated_step_y <= accumulated_step_y + mouse_dy;
 

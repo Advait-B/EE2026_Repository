@@ -7,7 +7,7 @@
 module vga_unit (
     input clk, // 100 MHz clock
     input rst, // reset
-    input clk_25MHz, // pixel pulse
+    input tick_25mhz, // pixel pulse
     input [2:0] stage, // current game stage
     input [2:0] pixel_colour, // cube colour from renderer
     input pixel_on_cube, // renderer hit flag
@@ -26,14 +26,14 @@ module vga_unit (
 `include "cube_defs.vh"
 
     vga_helper vga_helper(
-        .clk_25MHz(clk_25MHz),
+        .tick_25mhz(tick_25mhz),
         .hsync(hsync),
         .vsync(vsync),
         .pix_x(pix_x),
         .pix_y(pix_y),
         .video_on() // unused, vga_unit computes its own video_on
     );
-    always @(posedge clk_25MHz) begin
+    always @(posedge tick_25mhz) begin
         if (frame_start) frame_start <= 0;
         else if (!vsync) frame_start <= 1;
     end

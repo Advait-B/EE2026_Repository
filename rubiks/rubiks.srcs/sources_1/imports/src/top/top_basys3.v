@@ -48,22 +48,7 @@ module top_basys3 (
     wire row_done; // one-cycle pulse when a row buffer becomes valid
 
 
-/* CLOCKS, will convert to tickgen later */
-    wire clk_10hz;
-    flexclock clk_10hz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd4999999),
-        .slow_clock(clk_10hz)
-    );
-
-    wire clk_1kHz;
-    flexclock clk_1kHz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd49999),
-        .slow_clock(clk_1kHz)
-    );
+/* CLOCKS / TICK GENERATORS */
 
     wire clk_6p25MHz;
     flexclock clk_6p25MHz_unit (
@@ -73,12 +58,47 @@ module top_basys3 (
         .slow_clock(clk_6p25MHz)
     );
 
-    wire clk_25MHz;
-    flexclock clk_25MHz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd1),
-        .slow_clock(clk_25MHz)
+    // 4 Hz one-cycle tick (tick_gen is still empty)
+    // reg [24:0] t4_count = 25'd0;
+    // always @(posedge clk)
+    //     t4_count <= (t4_count == 25'd24_999_999) ? 25'd0 : t4_count + 25'd1;
+    // assign tick_4hz = (t4_count == 25'd0);
+
+    // tick_4hz: autoscrambler, solver, led blinking
+    wire tick_4hz;
+    flex_tick_gen tick_4hz_unit(
+        .clk(clk),
+        .rst(rst),
+        .enable(1),
+        .m(32'd24_999_999),
+        .tick(tick_4hz)
+    );
+    // tick_50hz: btn debouncing
+    wire tick_50hz;
+    flex_tick_gen tick_50hz_unit(
+        .clk(clk),
+        .rst(rst),
+        .enable(1),
+        .m(32'd1_999_999),
+        .tick(tick_50hz)
+    );
+    // tick_1khz: anode digit cycling
+    wire tick_1khz;
+    flex_tick_gen tick_1khz_unit(
+        .clk(clk),
+        .rst(rst),
+        .enable(1),
+        .m(32'd99_999),
+        .tick(tick_1khz)
+    );
+    // tick_25mhz: vga_unit, cube_render
+    wire tick_25mhz;
+    flex_tick_gen tick_25mhz_unit(
+        .clk(clk),
+        .rst(rst),
+        .enable(1),
+        .m(32'd3),
+        .tick(tick_25mhz)
     );
 
 
@@ -93,7 +113,6 @@ module top_basys3 (
     mouse_unit mouse_unit(
         .clk(clk),.rst(rst),.ps2_clk(PS2Clk),.ps2_data(PS2Data),
 
-        .dydx_clk(clk_1kHz),
         .mouse_x(mouse_x), .mouse_y(mouse_y),
         .mouse_dx(mouse_dx), .mouse_dy(mouse_dy),
 
@@ -107,7 +126,7 @@ module top_basys3 (
     button_unit button_unit (
         // .debugled(led[13]),
         .clk(clk),
-        .debounce_clk(clk_10hz),
+        .debounce_clk(tick_50hz),
         .btn_raw({btnC, btnU, btnL, btnR, btnD}),
         .btn_held(btn_held),
         .btn_pressed(btn_pressed),
@@ -130,7 +149,6 @@ module top_basys3 (
         .selectedoption(selectedoption),
         .cube(cube),
         .moves_left(moves_left),
-        // .debugled(led[12]),
         .oled_pmod(JC)
     );
 
@@ -138,7 +156,7 @@ module top_basys3 (
     anode_unit anode_unit (
         .clk(clk),
         .rst(rst),
-        .digitcycle_clk(clk_1kHz),
+        .digitcycle_clk(tick_1khz),
         .debugpage(debugpage),
         
         .mouse_x(mouse_x),
@@ -146,6 +164,7 @@ module top_basys3 (
         .mouse_dx(mouse_dx),
         .mouse_dy(mouse_dy),
         .camera_angle_id(camera_angle_id),
+        .moves_left(moves_left),
 
         .seg(seg),
         .dp(dp),
@@ -156,7 +175,7 @@ module top_basys3 (
     vga_unit vga_unit (
         .clk(clk),
         .rst(rst),
-        .clk_25MHz(clk_25MHz), // per-pixel update rate
+        .tick_25mhz(tick_25mhz), // per-pixel update rate
 
         .stage(stage),
         .pixel_colour(pixel_colour),
@@ -181,7 +200,7 @@ module top_basys3 (
     cube_renderer cube_renderer_unit (
         .clk(clk),
         .rst(rst),
-        .tick_25mhz(clk_25MHz),
+        .tick_25mhz(tick_25mhz),
         .frame_start(frame_start),
         .camera_angle_id(camera_angle_id),
         .pix_x(pix_x), .pix_y(pix_y),
@@ -201,13 +220,6 @@ module top_basys3 (
     );
 
     // CUBE, SCRAMBLE AND SOLVE
-    wire tick_4hz; // scramble/solve playback rate
-    tick_gen tick_gen (
-        .clk(clk), .rst(rst),
-        .en_25mhz(1'b1), .en_1khz(1'b1), .en_4hz(1'b1),
-        .tick_25mhz(), .tick_1khz(), .tick_4hz(), // TEST: tick_4hz made below
-        .clk_6p25mhz()
-    );
 
     wire [2:0] fsm_stage; // TODO: drive `stage` from this once game_fsm is done
     wire scramble_start, solve_start, solve_cancel, cube_reset;
@@ -264,41 +276,18 @@ module top_basys3 (
 
 /* TEST STUFF -------------------------- */
 
-    wire clk_2hz;
-    flexclock clk_2hz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd24999999),
-        .slow_clock(clk_2hz)
-    );
+    reg blink_2hz = 1'b0;
+    always @(posedge tick_4hz) blink_2hz <= ~blink_2hz; 
+    
     assign led[0] = (stage == 3'd0) ? 1 : 0;
-    assign led[1] = (stage == 3'd1) ? clk_2hz : 0;
+    assign led[1] = (stage == 3'd1) ? blink_2hz : 0;
     assign led[2] = (stage == 3'd2) ? 1 : 0;
     assign led[3] = (stage == 3'd3) ? 1 : 0;
-    assign led[4] = (stage == 3'd4) ? clk_2hz : 0;
+    assign led[4] = (stage == 3'd4) ? blink_2hz : 0;
     assign led[5] = (stage == 3'd5) ? 1 : 0;
-    assign led[6] = (stage == 3'd6) ? clk_10hz : 0; //error
+    assign led[6] = (stage == 3'd6) ? blink_2hz : 0; //error
 
-    assign led[7] = btn_pressed[4];
-    assign led[8] = btn_held[4];
-    assign led[9] = clk_10hz; //debounce clk
-
-    // assign led[13:10] = debugpage;
-
-    // INCREMENT STAGE
-    wire clk_0p16hz;
-    flexclock clk_0p16hz_unit (
-        .clock(clk),
-        .reset(0),
-        .m(32'd299999999),
-        .slow_clock(clk_0p16hz)
-    );
-
-    // 4 Hz one-cycle tick (tick_gen is still empty)
-    reg [24:0] t4_count = 25'd0;
-    always @(posedge clk)
-        t4_count <= (t4_count == 25'd24_999_999) ? 25'd0 : t4_count + 25'd1;
-    assign tick_4hz = (t4_count == 25'd0);
+    
 
     reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
     reg t_solve_cancel = 1'b0, t_cube_reset = 1'b0;
@@ -311,7 +300,7 @@ module top_basys3 (
     assign manual_move = t_manual_move;
     assign manual_valid = t_manual_valid;
 
-    wire manual_override = sw[11];
+    wire manual_override = sw[0];
 
     always @(posedge clk) begin
         // command pulses last one cycle, so we need to reset all the pulses

@@ -16,7 +16,7 @@ module switch_unit (
     always @(posedge clk) begin
         
         // if (sw[7]) debugpage <= 4'd7; else 
-        // if (sw[6]) debugpage <= 4'd6; else 
+        if (sw[6]) debugpage <= 4'd6; else //moves left for solver
         if (sw[5]) debugpage <= 4'd5; else //camera angle id
         if (sw[4]) debugpage <= 4'd4; else //maus dy
         if (sw[3]) debugpage <= 4'd3; else //maus dx

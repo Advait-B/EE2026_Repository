@@ -15,9 +15,10 @@ module anode_unit (
     input signed [10:0] mouse_dx, //-256 to +255
     input signed [10:0] mouse_dy, //-256 to +255
     input [7:0] camera_angle_id,
+    input [3:0] moves_left,         // solve moves remaining
+
     // input [2:0] stage, // current game stage
     // input [15:0] move_count, // moves applied
-    // input [3:0] moves_left, // solve moves remaining
 
     output reg [6:0] seg, // segments
     output reg dp, // decimal point
@@ -79,6 +80,7 @@ module anode_unit (
         debugpage==4'd3 ? mouse_dx[10] ? (~(mouse_dx[9:0])+1) : mouse_dx[9:0] :
         debugpage==4'd4 ? mouse_dy[10] ? (~(mouse_dy[9:0])+1) : mouse_dy[9:0] :
         debugpage==4'd5 ? {2'b0, camera_angle_id} :
+        debugpage==4'd6 ? {6'b0, moves_left} :
         // debugpage==4'd4 ? <YOUR VARIABLE> : // TODO
         10'b0; // debugpage==4'd0
 
@@ -135,6 +137,15 @@ module anode_unit (
         end
 
         4'd5: begin //CAMERA ANGLE ID
+            case (activedisplay)
+            2'd0: seg <= bcd_to_sevenseg(ones);
+            2'd1: seg <= bcd_to_sevenseg(tens); 
+            2'd2: seg <= bcd_to_sevenseg(hundreds);        
+            2'd3: seg <= bcd_to_sevenseg(thousands);
+            endcase 
+        end
+
+        4'd6: begin //MOVES LEFT
             case (activedisplay)
             2'd0: seg <= bcd_to_sevenseg(ones);
             2'd1: seg <= bcd_to_sevenseg(tens); 

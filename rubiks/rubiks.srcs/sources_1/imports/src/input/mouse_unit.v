@@ -7,7 +7,6 @@
 module mouse_unit (
     input clk, // 100 MHz clock
     input rst, // reset
-    input dydx_clk,
     inout ps2_clk, ps2_data, // PS/2 clock, data
     output reg [9:0] mouse_x, mouse_y, // cursor position, x 0-639, y 0-479
     output mouse_l, mouse_m, mouse_r, // buttons held: left, middle, right
@@ -71,35 +70,7 @@ module mouse_unit (
             resetxandy <= 1;
         end
 
-        // else begin
-        //     mouse_x <= prev_x + raw_mouse_x;
-        //     mouse_y <= prev_y + raw_mouse_y;
-        //     prev_x <= mouse_x;
-        //     prev_y <= mouse_y;
-
-        //     mouse_dx <= raw_mouse_x;
-        //     mouse_dy <= raw_mouse_y;
-        //     resetxandy <= 1;
-        // end
     end
-
-    // always @(posedge mouse_event) begin : maus
-    //      reg [9:0] scaled_mouse_x;
-    //      reg [9:0] scaled_mouse_y;
-    //     // scaled_mouse_x = raw_mouse_x >> MOUSE_SENS;
-    //     // scaled_mouse_y = raw_mouse_y >> MOUSE_SENS;
-    //     scaled_mouse_x = raw_mouse_x;
-    //     scaled_mouse_y = raw_mouse_y;
-
-    //     mouse_x <= (scaled_mouse_x < SCREEN_W) ? scaled_mouse_x : SCREEN_W-1;
-    //     mouse_y <= (scaled_mouse_y < SCREEN_H) ? scaled_mouse_y : SCREEN_H-1;
-    //     mouse_dx <= mouse_x - prev_x;
-    //     mouse_dy <= mouse_y - prev_y;
-    //     // mouse_dx <= mouse_dx >> 2;
-
-    //     prev_x <= mouse_x;
-    //     prev_y <= mouse_y;
-    // end
     
     
 
