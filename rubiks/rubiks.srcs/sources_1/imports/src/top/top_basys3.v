@@ -124,9 +124,9 @@ module top_basys3 (
     wire [4:0] btn_held;
     wire [4:0] btn_pressed;
     button_unit button_unit (
-        // .debugled(led[13]),
         .clk(clk),
         .debounce_clk(tick_50hz),
+        .stage(stage),
         .btn_raw({btnC, btnU, btnL, btnR, btnD}),
         .btn_held(btn_held),
         .btn_pressed(btn_pressed),
@@ -338,68 +338,84 @@ module top_basys3 (
 
                 end
                 STAGE_AUTO_SCRAMBLE: begin
-                    if (scr_done) stage <= STAGE_SCRAMBLED;
+                    if (btn_pressed[BTN_C]) stage <= STAGE_START;
+                    else if (scr_done) stage <= STAGE_SCRAMBLED;
                 end
                 STAGE_MANUAL_SCRAMBLE: begin
-                    if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
+                    if (is_solved(cube)) begin
+                        assign led[9:7] = 3'b111;
+                        if (btn_pressed[BTN_C]) begin
+                            // t_cube_reset <= 1'b1;
+                            // t_solve_cancel <= sol_busy;
+                            stage <= STAGE_START;
+                        end
+                    end
                     else begin
-                        if (btn_pressed [BTN_R]) begin //clockwise
-                            
-                            t_manual_valid <= 1'b1;
-                            case (selectedoption)
-                                3'd1: //FRONT
-                                    t_manual_move <= MV_F;
-                                3'd2: //BACK
-                                    t_manual_move <= MV_B;
-                                3'd3: //LEFT
-                                    t_manual_move <= MV_L;
-                                3'd4: //RIGHT
-                                    t_manual_move <= MV_R;
-                                3'd5: //UP
-                                    t_manual_move <= MV_U;
-                                3'd6: //DOWN
-                                    t_manual_move <= MV_D;
-                                default: begin
-                                    t_manual_move <= MV_NONE;
-                                    t_manual_valid <= 1'b0;
-                                end
-                            endcase
+                        assign led[9:7] = 3'b000;
+                        if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
+                        else begin
+                            if (btn_pressed [BTN_R]) begin //clockwise
+                                
+                                t_manual_valid <= 1'b1;
+                                case (selectedoption)
+                                    3'd1: //FRONT
+                                        t_manual_move <= MV_F;
+                                    3'd2: //BACK
+                                        t_manual_move <= MV_B;
+                                    3'd3: //LEFT
+                                        t_manual_move <= MV_L;
+                                    3'd4: //RIGHT
+                                        t_manual_move <= MV_R;
+                                    3'd5: //UP
+                                        t_manual_move <= MV_U;
+                                    3'd6: //DOWN
+                                        t_manual_move <= MV_D;
+                                    default: begin
+                                        t_manual_move <= MV_NONE;
+                                        t_manual_valid <= 1'b0;
+                                    end
+                                endcase
 
-                        end
-                        else if (btn_pressed[BTN_L]) begin //anticlockwise
+                            end
+                            else if (btn_pressed[BTN_L]) begin //anticlockwise
 
-                            t_manual_valid <= 1'b1;
-                            case (selectedoption)
-                                3'd1: //FRONT
-                                    t_manual_move <= MV_FP;
-                                3'd2: //BACK
-                                    t_manual_move <= MV_BP;
-                                3'd3: //LEFT
-                                    t_manual_move <= MV_LP;
-                                3'd4: //RIGHT
-                                    t_manual_move <= MV_RP;
-                                3'd5: //UP
-                                    t_manual_move <= MV_UP;
-                                3'd6: //DOWN
-                                    t_manual_move <= MV_DP;
-                                default: begin
-                                    t_manual_move <= MV_NONE;
-                                    t_manual_valid <= 1'b0;
-                                end
-                            endcase
+                                t_manual_valid <= 1'b1;
+                                case (selectedoption)
+                                    3'd1: //FRONT
+                                        t_manual_move <= MV_FP;
+                                    3'd2: //BACK
+                                        t_manual_move <= MV_BP;
+                                    3'd3: //LEFT
+                                        t_manual_move <= MV_LP;
+                                    3'd4: //RIGHT
+                                        t_manual_move <= MV_RP;
+                                    3'd5: //UP
+                                        t_manual_move <= MV_UP;
+                                    3'd6: //DOWN
+                                        t_manual_move <= MV_DP;
+                                    default: begin
+                                        t_manual_move <= MV_NONE;
+                                        t_manual_valid <= 1'b0;
+                                    end
+                                endcase
+                                
+                            end
                             
                         end
-                        
                     end
                 end
                 STAGE_SCRAMBLED: begin
-                    if (btn_pressed[BTN_C]) begin
+                    if (btn_pressed[BTN_C] && selectedoption == 3'd1) begin
                         t_solve_start <= 1'b1;
                         stage <= STAGE_SOLVING;
                     end
+                    else if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
+                        stage <= STAGE_MANUAL_SCRAMBLE;
+                    end
                 end
                 STAGE_SOLVING: begin
-                    if (sol_err) stage <= STAGE_ERROR;
+                    if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
+                    else if (sol_err) stage <= STAGE_ERROR;
                     else if (sol_done) stage <= STAGE_SOLVED;
                 end
                 STAGE_SOLVED: begin
