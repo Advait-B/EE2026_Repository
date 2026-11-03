@@ -6,6 +6,7 @@
 
 module button_unit (
     input clk, // 100 MHz clock
+    input rst, // reset, selection goes back to the first option
     input debounce_clk,
     input [4:0] btn_raw, // raw buttons, {C, U, L, R, D}
     // output debugled,
@@ -59,7 +60,8 @@ module button_unit (
 
     always @(posedge clk) begin
     
-        if (btn_pressed[3]) selectedoption <= selectedoption == 3'd1 ? 3'd6 : selectedoption-1; //up button
+        if (rst) selectedoption <= 3'd1;
+        else if (btn_pressed[3]) selectedoption <= selectedoption == 3'd1 ? 3'd6 : selectedoption-1; //up button
         else if (btn_pressed[0]) selectedoption <= selectedoption == 3'd6 ? 3'd1 : selectedoption+1; //down button
 
     end

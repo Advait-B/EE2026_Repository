@@ -21,10 +21,15 @@ module top_basys3 (
 `include "cube_defs.vh"
 
     /* GLOBAL WIRES */
-    // power-on reset: rst is high for the first 16 clocks after configuration
+    // global reset: rst is high for 16 clocks after configuration, and again
+    // whenever sw[15] is flicked (either direction)
     reg [4:0] por_count = 5'd0;
-    always @(posedge clk)
-        if (!por_count[4]) por_count <= por_count + 5'd1;
+    reg [2:0] sw15_sync = 3'd0;
+    always @(posedge clk) begin
+        sw15_sync <= {sw15_sync[1:0], sw[15]};
+        if (sw15_sync[2] != sw15_sync[1]) por_count <= 5'd0;
+        else if (!por_count[4]) por_count <= por_count + 5'd1;
+    end
     wire rst = !por_count[4];
 
     reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
@@ -127,6 +132,7 @@ module top_basys3 (
     button_unit button_unit (
         // .debugled(led[13]),
         .clk(clk),
+        .rst(rst),
         .debounce_clk(tick_50hz),
         .btn_raw({btnC, btnU, btnL, btnR, btnD}),
         .btn_held(btn_held),
@@ -321,110 +327,111 @@ module top_basys3 (
             t_solve_cancel <= sol_busy;
             stage <= STAGE_START;
         end
-        else if (manual_override && stage != STAGE_ERROR) begin
-            stage <= STAGE_MANUAL_SCRAMBLE;
-            //TODO MAKE THIS ONEPULSE
-                
-        end
-
-        if (sol_err) begin
-            stage <= STAGE_ERROR;
-        end
         else begin
-            case (stage) 
-                STAGE_START: begin
-                    if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
-                        t_scramble_start <= 1'b1;
-                        stage <= STAGE_AUTO_SCRAMBLE;
-                    end
-                    if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
-                        stage <= STAGE_MANUAL_SCRAMBLE;
-                    end
+            if (manual_override && stage != STAGE_ERROR) begin
+                stage <= STAGE_MANUAL_SCRAMBLE;
+                //TODO MAKE THIS ONEPULSE
+            end
 
-                end
-                STAGE_AUTO_SCRAMBLE: begin
-                    if (scr_done) stage <= STAGE_SCRAMBLED;
-                end
-                STAGE_MANUAL_SCRAMBLE: begin
-                    if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
-                    else begin
-                        if (btn_pressed [BTN_R]) begin //clockwise
-                            
-                            t_manual_valid <= 1'b1;
-                            case (selectedoption)
-                                3'd1: //FRONT
-                                    t_manual_move <= MV_F;
-                                3'd2: //BACK
-                                    t_manual_move <= MV_B;
-                                3'd3: //LEFT
-                                    t_manual_move <= MV_L;
-                                3'd4: //RIGHT
-                                    t_manual_move <= MV_R;
-                                3'd5: //UP
-                                    t_manual_move <= MV_U;
-                                3'd6: //DOWN
-                                    t_manual_move <= MV_D;
-                                default: begin
-                                    t_manual_move <= MV_NONE;
-                                    t_manual_valid <= 1'b0;
-                                end
-                            endcase
-
+            if (sol_err) begin
+                stage <= STAGE_ERROR;
+            end
+            else begin
+                case (stage) 
+                    STAGE_START: begin
+                        if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
+                            t_scramble_start <= 1'b1;
+                            stage <= STAGE_AUTO_SCRAMBLE;
                         end
-                        else if (btn_pressed[BTN_L]) begin //anticlockwise
-
-                            t_manual_valid <= 1'b1;
-                            case (selectedoption)
-                                3'd1: //FRONT
-                                    t_manual_move <= MV_FP;
-                                3'd2: //BACK
-                                    t_manual_move <= MV_BP;
-                                3'd3: //LEFT
-                                    t_manual_move <= MV_LP;
-                                3'd4: //RIGHT
-                                    t_manual_move <= MV_RP;
-                                3'd5: //UP
-                                    t_manual_move <= MV_UP;
-                                3'd6: //DOWN
-                                    t_manual_move <= MV_DP;
-                                default: begin
-                                    t_manual_move <= MV_NONE;
-                                    t_manual_valid <= 1'b0;
-                                end
-                            endcase
-                            
+                        if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
+                            stage <= STAGE_MANUAL_SCRAMBLE;
                         end
+
+                    end
+                    STAGE_AUTO_SCRAMBLE: begin
+                        if (scr_done) stage <= STAGE_SCRAMBLED;
+                    end
+                    STAGE_MANUAL_SCRAMBLE: begin
+                        if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
+                        else begin
+                            if (btn_pressed [BTN_R]) begin //clockwise
+                            
+                                t_manual_valid <= 1'b1;
+                                case (selectedoption)
+                                    3'd1: //FRONT
+                                        t_manual_move <= MV_F;
+                                    3'd2: //BACK
+                                        t_manual_move <= MV_B;
+                                    3'd3: //LEFT
+                                        t_manual_move <= MV_L;
+                                    3'd4: //RIGHT
+                                        t_manual_move <= MV_R;
+                                    3'd5: //UP
+                                        t_manual_move <= MV_U;
+                                    3'd6: //DOWN
+                                        t_manual_move <= MV_D;
+                                    default: begin
+                                        t_manual_move <= MV_NONE;
+                                        t_manual_valid <= 1'b0;
+                                    end
+                                endcase
+
+                            end
+                            else if (btn_pressed[BTN_L]) begin //anticlockwise
+
+                                t_manual_valid <= 1'b1;
+                                case (selectedoption)
+                                    3'd1: //FRONT
+                                        t_manual_move <= MV_FP;
+                                    3'd2: //BACK
+                                        t_manual_move <= MV_BP;
+                                    3'd3: //LEFT
+                                        t_manual_move <= MV_LP;
+                                    3'd4: //RIGHT
+                                        t_manual_move <= MV_RP;
+                                    3'd5: //UP
+                                        t_manual_move <= MV_UP;
+                                    3'd6: //DOWN
+                                        t_manual_move <= MV_DP;
+                                    default: begin
+                                        t_manual_move <= MV_NONE;
+                                        t_manual_valid <= 1'b0;
+                                    end
+                                endcase
+                            
+                            end
                         
+                        end
                     end
-                end
-                STAGE_SCRAMBLED: begin
-                    if (btn_pressed[BTN_C]) begin
-                        t_solve_start <= 1'b1;
-                        stage <= STAGE_SOLVING;
+                    STAGE_SCRAMBLED: begin
+                        if (btn_pressed[BTN_C]) begin
+                            t_solve_start <= 1'b1;
+                            stage <= STAGE_SOLVING;
+                        end
                     end
-                end
-                STAGE_SOLVING: begin
-                    if (sol_err) stage <= STAGE_ERROR;
-                    else if (sol_done) stage <= STAGE_SOLVED;
-                end
-                STAGE_SOLVED: begin
-                    if (btn_pressed[BTN_C]) begin
-                        t_cube_reset <= 1'b1;
-                        t_solve_cancel <= sol_busy;
-                        stage <= STAGE_START;
+                    STAGE_SOLVING: begin
+                        if (sol_err) stage <= STAGE_ERROR;
+                        else if (sol_done) stage <= STAGE_SOLVED;
                     end
-                end
-                default: begin //STAGE_ERROR
-                    stage <= STAGE_ERROR;
-                    if (btn_pressed[BTN_C]) begin
-                        t_cube_reset <= 1'b1;
-                        t_solve_cancel <= sol_busy;
-                        stage <= STAGE_START;
-                        //TODO MORE RESET LOGIC?
+                    STAGE_SOLVED: begin
+                        if (btn_pressed[BTN_C]) begin
+                            t_cube_reset <= 1'b1;
+                            t_solve_cancel <= sol_busy;
+                            stage <= STAGE_START;
+                        end
                     end
-                end
+                    default: begin //STAGE_ERROR
+                        stage <= STAGE_ERROR;
+                        if (btn_pressed[BTN_C]) begin
+                            t_cube_reset <= 1'b1;
+                            t_solve_cancel <= sol_busy;
+                            stage <= STAGE_START;
+                            //TODO MORE RESET LOGIC?
+                        end
+                    end
 
-            endcase
+                endcase
+            end
         end
     end
 
