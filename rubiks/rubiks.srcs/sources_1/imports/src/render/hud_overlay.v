@@ -108,12 +108,12 @@ module hud_overlay (
     // most significant byte in use). big = scale 3, else scale 2. Advance is 6 font pixels.
     function automatic text_px(
         input [9:0] px, py, x0, y0,
-        input [199:0] str,
-        input [4:0] len,
+        input [319:0] str,
+        input [5:0] len,
         input big
     );
         reg [9:0] dx, dy, cx, ry;
-        reg [4:0] idx;
+        reg [5:0] idx;
         reg [2:0] col;
         reg [7:0] ch;
         reg [34:0] g;
@@ -209,50 +209,52 @@ module hud_overlay (
 
     // stage colour, name, footer label, hint
     reg [11:0] mode_rgb;
-    reg [199:0] mode_str, foot_str, hint_str, empty_str;
-    reg [4:0] mode_len, foot_len, hint_len, empty_len;
+    reg [199:0] mode_str, foot_str, empty_str;
+    reg [4:0] mode_len, foot_len, empty_len;
+    reg [319:0] hint_str; // hint line, up to 40 characters
+    reg [5:0] hint_len;
     always @* begin
         foot_str = "HISTORY";  foot_len = 5'd7;
         empty_str = "NO MOVES YET"; empty_len = 5'd12;
         case (stage)
             STAGE_START: begin
                 mode_rgb = 12'hAAA; mode_str = "READY"; mode_len = 5'd5;
-                hint_str = "PRESS BTNC TO SCRAMBLE"; hint_len = 5'd22;
+                hint_str = "PRESS BTNC TO SCRAMBLE"; hint_len = 6'd22;
             end
             STAGE_AUTO_SCRAMBLE: begin
                 mode_rgb = 12'hF80; mode_str = "AUTO SCRAMBLE"; mode_len = 5'd13;
                 foot_str = "SCRAMBLE"; foot_len = 5'd8;
-                hint_str = "SCRAMBLING"; hint_len = 5'd10;
+                hint_str = "SCRAMBLING"; hint_len = 6'd10;
             end
             STAGE_MANUAL_SCRAMBLE: begin
                 mode_rgb = 12'h0CF; mode_str = "MANUAL"; mode_len = 5'd6;
-                hint_str = "DRAG MOUSE TO ROTATE VIEW"; hint_len = 5'd25;
+                hint_str = "BTNU/D FACE BTNL/R ACW/CW BTNC DONE"; hint_len = 6'd35;
             end
             STAGE_SCRAMBLED: begin
                 mode_rgb = 12'hF0F; mode_str = "SCRAMBLED"; mode_len = 5'd9;
                 foot_str = "SCRAMBLE"; foot_len = 5'd8;
-                hint_str = "PRESS BTNC TO SOLVE"; hint_len = 5'd19;
+                hint_str = "PRESS BTNC TO SOLVE"; hint_len = 6'd19;
             end
             STAGE_SOLVING: begin
                 mode_rgb = 12'hFE0; mode_str = "SOLVING"; mode_len = 5'd7;
                 foot_str = "SOLUTION"; foot_len = 5'd8;
                 empty_str = "SEARCHING"; empty_len = 5'd9;
                 if (has_total) begin
-                    hint_str = {"SOLUTION FOUND - ", total_str, " MOVES"}; hint_len = 5'd25;
+                    hint_str = {"SOLUTION FOUND - ", total_str, " MOVES"}; hint_len = 6'd25;
                 end else begin
-                    hint_str = "SEARCHING"; hint_len = 5'd9;
+                    hint_str = "SEARCHING"; hint_len = 6'd9;
                 end
             end
             STAGE_SOLVED: begin
                 mode_rgb = 12'h0F4; mode_str = "SOLVED"; mode_len = 5'd6;
                 foot_str = "SOLUTION"; foot_len = 5'd8;
-                hint_str = {"SOLVED IN ", count_str, " MOVES"}; hint_len = 5'd18;
+                hint_str = {"SOLVED IN ", count_str, " MOVES"}; hint_len = 6'd18;
             end
             default: begin // STAGE_ERROR
                 mode_rgb = RGB_ERROR; mode_str = "ERROR"; mode_len = 5'd5;
                 foot_str = "SOLUTION"; foot_len = 5'd8;
                 empty_str = "NO SOLUTION FOUND"; empty_len = 5'd17;
-                hint_str = "SOLVER TIMEOUT"; hint_len = 5'd14;
+                hint_str = "SOLVER TIMEOUT"; hint_len = 6'd14;
             end
         endcase
     end

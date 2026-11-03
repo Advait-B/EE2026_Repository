@@ -8,6 +8,7 @@ module cube_row_segments (
     input rst,
     input start,
     input [71:0] cube,
+    input [2:0] hl_face,        // selected face option, 0 = no highlight
     input [59:0] sticker_ids,   // slot i: [i*5 +: 5], actual sticker IDs
     input [119:0] span_lefts,   // slot i: [i*10 +: 10]
     input [119:0] span_rights,  // slot i: [i*10 +: 10]
@@ -18,7 +19,7 @@ module cube_row_segments (
     output reg seg_valid,       // one-cycle pulse for a new segment
     output reg [4:0] seg_index,
     output reg [9:0] seg_x_start,
-    output reg [3:0] seg_value, // {on_cube, colour[2:0]}
+    output reg [4:0] seg_value, // {dim, on_cube, colour[2:0]}
     output reg [4:0] seg_count
 );
 `include "cube_defs.vh"
@@ -38,8 +39,9 @@ module cube_row_segments (
     reg [10:0] best_boundary_x;
     reg selected_sticker_found;
     reg [2:0] selected_colour;
+    reg selected_dim;
     reg have_previous_value;
-    reg [3:0] previous_value;
+    reg [4:0] previous_value;
 
     reg [4:0] slot_sticker_id;
     reg [9:0] slot_span_left, slot_span_right;
@@ -47,6 +49,7 @@ module cube_row_segments (
     reg [10:0] slot_span_end_x;
     reg slot_hit;
     reg [2:0] slot_colour;
+    reg slot_dim;
     reg [10:0] slot_next_boundary_x;
 
     // STAGE 3 COMBINATIONAL: inspect the current slot and find the next boundary.
@@ -64,8 +67,11 @@ module cube_row_segments (
             (segment_start_x <= {1'b0, slot_span_right});
 
         slot_colour = COL_BLANK;
-        if (slot_hit)
+        slot_dim = 1'b0;
+        if (slot_hit) begin
             slot_colour = get_sticker(cube, slot_sticker_id);
+            slot_dim = !in_layer(slot_sticker_id, hl_face);
+        end
 
         slot_span_end_x = {1'b0, slot_span_right} + 11'd1;
         if (slot_span_end_x > SCREEN_END_X)
@@ -91,14 +97,15 @@ module cube_row_segments (
             best_boundary_x <= SCREEN_END_X;
             selected_sticker_found <= 1'b0;
             selected_colour <= COL_BLANK;
+            selected_dim <= 1'b0;
             have_previous_value <= 1'b0;
-            previous_value <= 4'd0;
+            previous_value <= 5'd0;
             busy <= 1'b0;
             done <= 1'b0;
             seg_valid <= 1'b0;
             seg_index <= 5'd0;
             seg_x_start <= 10'd0;
-            seg_value <= 4'd0;
+            seg_value <= 5'd0;
             seg_count <= 5'd0;
         end else begin
             done <= 1'b0;
@@ -114,11 +121,12 @@ module cube_row_segments (
                         best_boundary_x <= SCREEN_END_X;
                         selected_sticker_found <= 1'b0;
                         selected_colour <= COL_BLANK;
+                        selected_dim <= 1'b0;
                         have_previous_value <= 1'b0;
-                        previous_value <= 4'd0;
+                        previous_value <= 5'd0;
                         seg_index <= 5'd0;
                         seg_x_start <= 10'd0;
-                        seg_value <= 4'd0;
+                        seg_value <= 5'd0;
                         seg_count <= 5'd0;
                         busy <= 1'b1;
                     end
@@ -129,6 +137,7 @@ module cube_row_segments (
                     if (slot_hit && !selected_sticker_found) begin
                         selected_sticker_found <= 1'b1;
                         selected_colour <= slot_colour;
+                        selected_dim <= slot_dim;
                     end
                     if (slot_next_boundary_x < best_boundary_x)
                         best_boundary_x <= slot_next_boundary_x;
@@ -144,17 +153,17 @@ module cube_row_segments (
                 STATE_EVALUATE: begin
                     busy <= 1'b1;
                     if (!have_previous_value ||
-                        ({selected_sticker_found, selected_colour} != previous_value)) begin
+                        ({selected_dim, selected_sticker_found, selected_colour} != previous_value)) begin
                         seg_valid <= 1'b1;
                         seg_index <= seg_count;
                         seg_x_start <= segment_start_x[9:0];
                         if (selected_sticker_found)
-                            seg_value <= {1'b1, selected_colour};
+                            seg_value <= {selected_dim, 1'b1, selected_colour};
                         else
-                            seg_value <= 4'b0000;
+                            seg_value <= 5'b00000;
                         seg_count <= seg_count + 5'd1;
                         previous_value <= selected_sticker_found ?
-                            {1'b1, selected_colour} : 4'b0000;
+                            {selected_dim, 1'b1, selected_colour} : 5'b00000;
                         have_previous_value <= 1'b1;
                     end
 
@@ -165,6 +174,7 @@ module cube_row_segments (
                         best_boundary_x <= SCREEN_END_X;
                         selected_sticker_found <= 1'b0;
                         selected_colour <= COL_BLANK;
+                        selected_dim <= 1'b0;
                         state <= STATE_SCAN;
                     end
                 end

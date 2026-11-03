@@ -11,6 +11,7 @@ module vga_unit (
     input [2:0] stage, // current game stage
     input [2:0] pixel_colour, // cube colour from renderer
     input pixel_on_cube, // renderer hit flag
+    input pixel_dim, // 1 = draw this cube pixel at half brightness
     input [9:0] mouse_x,
     input [9:0] mouse_y, // cursor position
     input [4:0] move_req, // move sent to the engine (HUD history)
@@ -59,11 +60,15 @@ module vga_unit (
         .hud_on(hud_on), .hud_rgb(hud_rgb)
     );
 
+    // cube colour, halved when the sticker is outside the selected manual-mode layer
+    wire [11:0] cube_rgb = colour_to_rgb(pixel_colour);
+    wire [11:0] cube_rgb_dim = (cube_rgb >> 1) & 12'h777;
+
     // priority: HUD, then cube, then black background; black outside the visible area
     wire video_on = (pix_x < SCREEN_W) && (pix_y < SCREEN_H);
     assign vga_rgb = !video_on     ? 12'h000 :
                      hud_on        ? hud_rgb :
-                     pixel_on_cube ? colour_to_rgb(pixel_colour) : //rgb values for vga defined in cube_defs.vh
+                     pixel_on_cube ? (pixel_dim ? cube_rgb_dim : cube_rgb) : //rgb values for vga defined in cube_defs.vh
                                      12'h000;
 
 endmodule
