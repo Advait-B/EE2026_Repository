@@ -43,6 +43,7 @@ module top_basys3 (
     wire [9:0] pix_y;
     wire [2:0] pixel_colour;
     wire pixel_on_cube;
+    wire pixel_dim; // cube pixel outside the selected manual-mode layer
     wire frame_start;
     wire [7:0] camera_angle_id; //rn we have 256 camera angles
     wire row_done; // one-cycle pulse when a row buffer becomes valid
@@ -180,6 +181,7 @@ module top_basys3 (
         .stage(stage),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
+        .pixel_dim(pixel_dim),
         .mouse_x(mouse_x), .mouse_y(mouse_y),
         .move_req(move_req), .move_valid(move_valid),
         .moves_left(moves_left), .plan_left(plan_left),
@@ -205,8 +207,11 @@ module top_basys3 (
         .camera_angle_id(camera_angle_id),
         .pix_x(pix_x), .pix_y(pix_y),
         .cube(cube),
+        // in manual mode, highlight the layer the selected face turns
+        .hl_face((stage == STAGE_MANUAL_SCRAMBLE) ? selectedoption : 3'd0),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
+        .pixel_dim(pixel_dim),
         .row_done(row_done) // one-cycle pulse when a row buffer becomes valid
     );
 

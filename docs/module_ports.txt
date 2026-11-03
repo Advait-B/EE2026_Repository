@@ -200,8 +200,10 @@ module cube_renderer(
     input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
     input [9:0] pix_x, pix_y, // current VGA pixel position
     input [71:0] cube, // live sticker colours, 24 entries x 3 bits
+    input [2:0] hl_face, // manual-mode face option to highlight, 0 = none
     output [2:0] pixel_colour, // colour code of this pixel
     output pixel_on_cube, // 1 when this pixel is on a sticker
+    output pixel_dim, // 1 when the sticker is outside the highlighted layer
     output row_done // one-cycle pulse when a complete row is ready
 );
 
@@ -234,6 +236,7 @@ module cube_row_segments(
     input rst,
     input start,
     input [71:0] cube,
+    input [2:0] hl_face, // selected face option, 0 = no highlight
     input [59:0] sticker_ids, // slot i: [i*5 +: 5], actual sticker IDs
     input [119:0] span_lefts, // slot i: [i*10 +: 10]
     input [119:0] span_rights, // slot i: [i*10 +: 10]
@@ -243,13 +246,13 @@ module cube_row_segments(
     output seg_valid, // one-cycle pulse for a new segment
     output [4:0] seg_index,
     output [9:0] seg_x_start,
-    output [3:0] seg_value, // {on_cube, colour[2:0]}
+    output [4:0] seg_value, // {dim, on_cube, colour[2:0]}
     output [4:0] seg_count
 );
 
 The segment generator scans span boundaries from x=0 to x=640. At each
 interval it selects the first covering slot (frontmost) and emits a segment
-only when {on_cube, colour} changes. seg_index is zero-based; seg_count is
+only when {dim, on_cube, colour} changes. seg_index is zero-based; seg_count is
 the final number of emitted segments.
 module cube_scanline_buffer(
     input clk,
@@ -260,12 +263,13 @@ module cube_scanline_buffer(
     input seg_valid,
     input [4:0] seg_index,
     input [9:0] seg_x_start,
-    input [3:0] seg_value,
+    input [4:0] seg_value,
     input [4:0] seg_count,
     input segments_done,
     input [9:0] pix_x, pix_y,
     output [2:0] pixel_colour,
     output pixel_on_cube,
+    output pixel_dim,
     output row_done
 );
 
@@ -280,6 +284,7 @@ module vga_unit(
     input [2:0] stage, // current game stage
     input [2:0] pixel_colour, // cube colour from renderer
     input pixel_on_cube, // renderer hit flag
+    input pixel_dim, // draw this cube pixel at half brightness
     input [9:0] mouse_x, mouse_y, // cursor position
     input [4:0] move_req, // move sent to the engine (HUD history)
     input move_valid, // pulse when move_req is applied

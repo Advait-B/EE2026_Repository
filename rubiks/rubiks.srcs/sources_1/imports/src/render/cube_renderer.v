@@ -12,8 +12,10 @@ module cube_renderer (
     input [7:0] camera_angle_id, // {pitch_bin[3:0], yaw_bin[3:0]}
     input [9:0] pix_x, pix_y, // current pixel position
     input [71:0] cube, // live cube state
+    input [2:0] hl_face, // selected face option to highlight, 0 = none
     output [2:0] pixel_colour, // colour code of this pixel
     output pixel_on_cube, // 1 = this pixel is on the cube
+    output pixel_dim, // 1 = sticker outside the highlighted layer
     output row_done // one-cycle pulse when a row buffer becomes valid
 );
 `include "cube_defs.vh"
@@ -70,7 +72,7 @@ module cube_renderer (
     wire segment_busy, segment_done, seg_valid;
     wire [4:0] seg_index, seg_count;
     wire [9:0] seg_x_start;
-    wire [3:0] seg_value;
+    wire [4:0] seg_value;
 
     assign request_valid = loading_geometry &&
         (visible_sticker_slot < VISIBLE_STICKER_SLOT_COUNT);
@@ -130,6 +132,7 @@ module cube_renderer (
         .rst(calc_rst),
         .start(segments_start),
         .cube(cube),
+        .hl_face(hl_face),
         .sticker_ids(segment_sticker_ids),
         .span_lefts(segment_span_lefts),
         .span_rights(segment_span_rights),
@@ -162,6 +165,7 @@ module cube_renderer (
         .pix_y(pix_y),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
+        .pixel_dim(pixel_dim),
         .row_done(row_done)
     );
 

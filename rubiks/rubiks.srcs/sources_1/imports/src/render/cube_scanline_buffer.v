@@ -12,13 +12,14 @@ module cube_scanline_buffer (
     input seg_valid,
     input [4:0] seg_index,
     input [9:0] seg_x_start,
-    input [3:0] seg_value,
+    input [4:0] seg_value,
     input [4:0] seg_count,
     input segments_done,
     input [9:0] pix_x,
     input [9:0] pix_y,
     output reg [2:0] pixel_colour,
     output reg pixel_on_cube,
+    output reg pixel_dim, // 1 = sticker outside the selected layer
     output reg row_done
 );
 `include "cube_defs.vh"
@@ -27,9 +28,9 @@ module cube_scanline_buffer (
     localparam [1:0] COMMIT_IDLE = 2'd0;
     localparam [1:0] COMMIT_VALID = 2'd1;
 
-    // Each entry is {x_start[9:0], {on_cube, colour[2:0]}}.
-    reg [13:0] even_row_segments [0:MAX_SEGMENT_COUNT-1];
-    reg [13:0] odd_row_segments [0:MAX_SEGMENT_COUNT-1];
+    // Each entry is {x_start[9:0], {dim, on_cube, colour[2:0]}}.
+    reg [14:0] even_row_segments [0:MAX_SEGMENT_COUNT-1];
+    reg [14:0] odd_row_segments [0:MAX_SEGMENT_COUNT-1];
     reg [4:0] even_row_count, odd_row_count;
     reg even_row_valid, odd_row_valid;
 
@@ -49,12 +50,12 @@ module cube_scanline_buffer (
     wire [3:0] run_hit_l3;
     wire [1:0] run_hit_l4;
     wire run_hit_l5;
-    wire [3:0] run_value_l0 [0:31];
-    wire [3:0] run_value_l1 [0:15];
-    wire [3:0] run_value_l2 [0:7];
-    wire [3:0] run_value_l3 [0:3];
-    wire [3:0] run_value_l4 [0:1];
-    wire [3:0] run_value_l5;
+    wire [4:0] run_value_l0 [0:31];
+    wire [4:0] run_value_l1 [0:15];
+    wire [4:0] run_value_l2 [0:7];
+    wire [4:0] run_value_l3 [0:3];
+    wire [4:0] run_value_l4 [0:1];
+    wire [4:0] run_value_l5;
     genvar scan_leaf;
     genvar tree_node;
 
@@ -72,16 +73,16 @@ module cube_scanline_buffer (
             localparam [4:0] LEAF_INDEX = scan_leaf;
 
             if (scan_leaf < MAX_SEGMENT_COUNT) begin : stored_segment
-                wire [13:0] run_entry;
+                wire [14:0] run_entry;
 
                 assign run_entry = pix_y[0] ? odd_row_segments[scan_leaf] :
                                               even_row_segments[scan_leaf];
                 assign run_hit_l0[scan_leaf] = scan_buffer_valid &&
-                    (scan_segment_count > LEAF_INDEX) && (run_entry[13:4] <= pix_x);
-                assign run_value_l0[scan_leaf] = run_entry[3:0];
+                    (scan_segment_count > LEAF_INDEX) && (run_entry[14:5] <= pix_x);
+                assign run_value_l0[scan_leaf] = run_entry[4:0];
             end else begin : unused_leaf
                 assign run_hit_l0[scan_leaf] = 1'b0;
-                assign run_value_l0[scan_leaf] = 4'd0;
+                assign run_value_l0[scan_leaf] = 5'd0;
             end
         end
 
@@ -121,10 +122,12 @@ module cube_scanline_buffer (
     always @* begin
         pixel_colour = COL_BLANK;
         pixel_on_cube = 1'b0;
+        pixel_dim = 1'b0;
 
         if ((pix_x < SCREEN_W) && scan_active && scan_buffer_valid && run_hit_l5) begin
             pixel_on_cube = run_value_l5[3];
             pixel_colour = run_value_l5[2:0];
+            pixel_dim = run_value_l5[4];
         end
     end
 

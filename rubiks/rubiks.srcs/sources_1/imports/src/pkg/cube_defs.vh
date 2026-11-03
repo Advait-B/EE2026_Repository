@@ -317,6 +317,24 @@
         end
     endfunction
 
+    // Manual-mode face option (1 F, 2 B, 3 L, 4 R, 5 U, 6 D) -> 1 if sticker s
+    // turns with that face. Uses sticker_position {x, y, z}. Option 0 = all.
+    function automatic in_layer(input [4:0] s, input [2:0] opt);
+        reg [2:0] p;
+        begin
+            p = sticker_position(s);
+            case (opt)
+                3'd1: in_layer = p[0];
+                3'd2: in_layer = !p[0];
+                3'd3: in_layer = !p[2];
+                3'd4: in_layer = p[2];
+                3'd5: in_layer = p[1];
+                3'd6: in_layer = !p[1];
+                default: in_layer = 1'b1;
+            endcase
+        end
+    endfunction
+
     // Recover a tile number from its face and corner position.
     function automatic [1:0] sticker_tile_at_position(input [2:0] face,
                                                        input [2:0] pos);
