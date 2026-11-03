@@ -15,4 +15,32 @@ module tick_gen (
 );
 `include "cube_defs.vh"
 
+
+
+
+
+endmodule
+
+/* m = (100MHz / desired freq) - 1 */
+module flex_tick_gen(
+    input  wire clk,
+    input rst,
+    input  wire enable,
+    input  wire [31:0] m,      // tick every m+1 clocks
+    output reg tick
+);
+    reg [31:0] count = 0;
+
+    always @(posedge clk) begin
+        if (rst || !enable) begin
+            count <= 0;
+            tick  <= 1'b0;
+        end else if (count >= m) begin
+            count <= 0;
+            tick  <= 1'b1;
+        end else begin
+            count <= count + 1'b1;
+            tick  <= 1'b0;
+        end
+    end
 endmodule

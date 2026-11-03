@@ -294,21 +294,6 @@ module top_basys3 (
         .slow_clock(clk_0p16hz)
     );
 
-/* BOARD TEST FSM (temporary, stands in for game_fsm) ------------------
-   START          -- btnC, menu option 1 --> AUTO_SCRAMBLE
-   START          -- btnC, menu option 2 --> MANUAL_SCRAMBLE
-   AUTO_SCRAMBLE  -- scrambler done      --> SCRAMBLED
-   MANUAL_SCRAMBLE-- btnC                --> SCRAMBLED
-   SCRAMBLED      -- btnC                --> SOLVING
-   SOLVING        -- solver done         --> SOLVED   (solver error --> ERROR)
-   SOLVED / ERROR -- btnC                --> START
-   In MANUAL_SCRAMBLE: pick a face with sw8-sw13 = U R F D L B (lowest
-   switch wins), then btnR = clockwise, btnL = anticlockwise.
-   btnU / btnD move the OLED menu (selectedoption) as before.
-   led[6:0] stage, led[10] scrambler busy, led[11] solver busy,
-   led[15:12] solve moves left
-   ------------------------------------------------------------------ */
-
     // 4 Hz one-cycle tick (tick_gen is still empty)
     reg [24:0] t4_count = 25'd0;
     always @(posedge clk)
@@ -316,71 +301,141 @@ module top_basys3 (
     assign tick_4hz = (t4_count == 25'd0);
 
     reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
+    reg t_solve_cancel = 1'b0, t_cube_reset = 1'b0;
     assign scramble_start = t_scramble_start;
     assign solve_start = t_solve_start;
-    assign solve_cancel = 1'b0;
-    assign cube_reset = 1'b0;
+    assign solve_cancel = t_solve_cancel; // = 1'b0;
+    assign cube_reset = t_cube_reset; // = 1'b0;
     reg [4:0] t_manual_move = MV_NONE;
     reg t_manual_valid = 1'b0;
     assign manual_move = t_manual_move;
     assign manual_valid = t_manual_valid;
 
-    // manual turns: face from sw8-sw13, move code = face*3 + turn
-    wire [2:0] manual_face = sw[8]  ? FACE_U :
-                             sw[9]  ? FACE_R :
-                             sw[10] ? FACE_F :
-                             sw[11] ? FACE_D :
-                             sw[12] ? FACE_L :
-                             sw[13] ? FACE_B : 3'd7; // 7 = no face picked
-    wire [1:0] manual_turn = btn_pressed[BTN_R] ? TURN_CW : TURN_CCW;
-    wire manual_btn = btn_pressed[BTN_R] | btn_pressed[BTN_L];
-    wire btnc = btn_pressed[BTN_C];
+    wire manual_override = sw[11];
 
     always @(posedge clk) begin
-        // command pulses last one cycle
+        // command pulses last one cycle, so we need to reset all the pulses
         t_scramble_start <= 1'b0;
         t_solve_start <= 1'b0;
+        t_solve_cancel <= 1'b0;
+        t_cube_reset <= 1'b0;
         t_manual_valid <= 1'b0;
 
+    /* FSM START */
         if (rst) begin
+            t_cube_reset <= 1'b1;
+            t_solve_cancel <= sol_busy;
             stage <= STAGE_START;
-        end else begin
-            case (stage)
-                STAGE_START:
-                    if (btnc && selectedoption == 3'd1 && !scr_busy) begin
+        end
+        else if (manual_override && stage != STAGE_ERROR) begin
+            stage <= STAGE_MANUAL_SCRAMBLE;
+            //TODO MAKE THIS ONEPULSE
+                
+        end
+
+        if (sol_err) begin
+            stage <= STAGE_ERROR;
+        end
+        else begin
+            case (stage) 
+                STAGE_START: begin
+                    if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
                         t_scramble_start <= 1'b1;
                         stage <= STAGE_AUTO_SCRAMBLE;
-                    end else if (btnc && selectedoption == 3'd2) begin
+                    end
+                    if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
                         stage <= STAGE_MANUAL_SCRAMBLE;
                     end
-                STAGE_AUTO_SCRAMBLE:
+
+                end
+                STAGE_AUTO_SCRAMBLE: begin
                     if (scr_done) stage <= STAGE_SCRAMBLED;
-                STAGE_MANUAL_SCRAMBLE:
-                    if (btnc) begin
-                        stage <= STAGE_SCRAMBLED;
-                    end else if (manual_btn && manual_face != 3'd7) begin
-                        // move_controller only passes manual moves in this stage
-                        t_manual_move <= {manual_face, 1'b0} + manual_face + manual_turn;
-                        t_manual_valid <= 1'b1;
+                end
+                STAGE_MANUAL_SCRAMBLE: begin
+                    if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
+                    else begin
+                        if (btn_pressed [BTN_R]) begin //clockwise
+                            
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: //FRONT
+                                    t_manual_move <= MV_F;
+                                3'd2: //BACK
+                                    t_manual_move <= MV_B;
+                                3'd3: //LEFT
+                                    t_manual_move <= MV_L;
+                                3'd4: //RIGHT
+                                    t_manual_move <= MV_R;
+                                3'd5: //UP
+                                    t_manual_move <= MV_U;
+                                3'd6: //DOWN
+                                    t_manual_move <= MV_D;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
+
+                        end
+                        else if (btn_pressed[BTN_L]) begin //anticlockwise
+
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: //FRONT
+                                    t_manual_move <= MV_FP;
+                                3'd2: //BACK
+                                    t_manual_move <= MV_BP;
+                                3'd3: //LEFT
+                                    t_manual_move <= MV_LP;
+                                3'd4: //RIGHT
+                                    t_manual_move <= MV_RP;
+                                3'd5: //UP
+                                    t_manual_move <= MV_UP;
+                                3'd6: //DOWN
+                                    t_manual_move <= MV_DP;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
+                            
+                        end
+                        
                     end
-                STAGE_SCRAMBLED:
-                    if (btnc) begin
+                end
+                STAGE_SCRAMBLED: begin
+                    if (btn_pressed[BTN_C]) begin
                         t_solve_start <= 1'b1;
                         stage <= STAGE_SOLVING;
                     end
-                STAGE_SOLVING:
+                end
+                STAGE_SOLVING: begin
                     if (sol_err) stage <= STAGE_ERROR;
                     else if (sol_done) stage <= STAGE_SOLVED;
-                STAGE_SOLVED, STAGE_ERROR:
-                    if (btnc) stage <= STAGE_START;
-                default:
-                    stage <= STAGE_START;
+                end
+                STAGE_SOLVED: begin
+                    if (btn_pressed[BTN_C]) begin
+                        t_cube_reset <= 1'b1;
+                        t_solve_cancel <= sol_busy;
+                        stage <= STAGE_START;
+                    end
+                end
+                default: begin //STAGE_ERROR
+                    stage <= STAGE_ERROR;
+                    if (btn_pressed[BTN_C]) begin
+                        t_cube_reset <= 1'b1;
+                        t_solve_cancel <= sol_busy;
+                        stage <= STAGE_START;
+                        //TODO MORE RESET LOGIC?
+                    end
+                end
+
             endcase
         end
     end
 
     assign led[10] = scr_busy;
     assign led[11] = sol_busy;
-    assign led[15:12] = moves_left;
+    assign led[15:12] = moves_left; // move this to anode?
 
 endmodule
