@@ -21,10 +21,15 @@ module top_basys3 (
 `include "cube_defs.vh"
 
     /* GLOBAL WIRES */
-    // power-on reset: rst is high for the first 16 clocks after configuration
+    // global reset: rst is high for 16 clocks after configuration, and again
+    // whenever sw[15] is flicked (either direction)
     reg [4:0] por_count = 5'd0;
-    always @(posedge clk)
-        if (!por_count[4]) por_count <= por_count + 5'd1;
+    reg [2:0] sw15_sync = 3'd0;
+    always @(posedge clk) begin
+        sw15_sync <= {sw15_sync[1:0], sw[15]};
+        if (sw15_sync[2] != sw15_sync[1]) por_count <= 5'd0;
+        else if (!por_count[4]) por_count <= por_count + 5'd1;
+    end
     wire rst = !por_count[4];
 
     reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
@@ -43,6 +48,7 @@ module top_basys3 (
     wire [9:0] pix_y;
     wire [2:0] pixel_colour;
     wire pixel_on_cube;
+    wire pixel_dim; // cube pixel outside the selected manual-mode layer
     wire frame_start;
     wire [7:0] camera_angle_id; //rn we have 256 camera angles
     wire row_done; // one-cycle pulse when a row buffer becomes valid
@@ -125,6 +131,7 @@ module top_basys3 (
     wire [4:0] btn_pressed;
     button_unit button_unit (
         .clk(clk),
+        .rst(rst),
         .debounce_clk(tick_50hz),
         .stage(stage),
         .btn_raw({btnC, btnU, btnL, btnR, btnD}),
@@ -180,6 +187,7 @@ module top_basys3 (
         .stage(stage),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
+        .pixel_dim(pixel_dim),
         .mouse_x(mouse_x), .mouse_y(mouse_y),
         .move_req(move_req), .move_valid(move_valid),
         .moves_left(moves_left), .plan_left(plan_left),
@@ -205,8 +213,11 @@ module top_basys3 (
         .camera_angle_id(camera_angle_id),
         .pix_x(pix_x), .pix_y(pix_y),
         .cube(cube),
+        // in manual mode, highlight the layer the selected face turns
+        .hl_face((stage == STAGE_MANUAL_SCRAMBLE) ? selectedoption : 3'd0),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
+        .pixel_dim(pixel_dim),
         .row_done(row_done) // one-cycle pulse when a row buffer becomes valid
     );
 
@@ -316,25 +327,25 @@ module top_basys3 (
             t_solve_cancel <= sol_busy;
             stage <= STAGE_START;
         end
-        else if (manual_override && stage != STAGE_ERROR) begin
-            stage <= STAGE_MANUAL_SCRAMBLE;
-            //TODO MAKE THIS ONEPULSE
-                
-        end
-
-        if (sol_err) begin
-            stage <= STAGE_ERROR;
-        end
         else begin
-            case (stage) 
-                STAGE_START: begin
-                    if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
-                        t_scramble_start <= 1'b1;
-                        stage <= STAGE_AUTO_SCRAMBLE;
-                    end
-                    if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
-                        stage <= STAGE_MANUAL_SCRAMBLE;
-                    end
+            if (manual_override && stage != STAGE_ERROR) begin
+                stage <= STAGE_MANUAL_SCRAMBLE;
+                //TODO MAKE THIS ONEPULSE
+            end
+
+            if (sol_err) begin
+                stage <= STAGE_ERROR;
+            end
+            else begin
+                case (stage) 
+                    STAGE_START: begin
+                        if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
+                            t_scramble_start <= 1'b1;
+                            stage <= STAGE_AUTO_SCRAMBLE;
+                        end
+                        if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
+                            stage <= STAGE_MANUAL_SCRAMBLE;
+                        end
 
                 end
                 STAGE_AUTO_SCRAMBLE: begin
@@ -376,6 +387,8 @@ module top_basys3 (
                                     end
                                 endcase
 
+                            end
+                            else if (btn_pressed[BTN_L]) begin //anticlockwise
                             end
                             else if (btn_pressed[BTN_L]) begin //anticlockwise
 
@@ -435,7 +448,8 @@ module top_basys3 (
                     end
                 end
 
-            endcase
+                endcase
+            end
         end
     end
 

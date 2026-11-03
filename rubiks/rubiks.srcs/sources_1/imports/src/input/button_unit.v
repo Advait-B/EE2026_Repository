@@ -6,6 +6,7 @@
 
 module button_unit (
     input clk, // 100 MHz clock
+    input rst, // reset, selection goes back to the first option
     input debounce_clk,
     input [2:0] stage,
 
@@ -70,6 +71,7 @@ module button_unit (
         3'd6;
 
     always @(posedge clk) begin
+        if (rst) selectedoption <= 3'd1;
         if (btn_pressed[3]) selectedoption <= selectedoption == 3'd1 ? wraparound : selectedoption-1; //up button
         else if (btn_pressed[0]) selectedoption <= selectedoption == wraparound ? 3'd1 : selectedoption+1; //down button
 
