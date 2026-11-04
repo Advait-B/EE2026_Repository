@@ -147,8 +147,10 @@
     localparam [2:0] STAGE_MANUAL_SCRAMBLE = 3'd2;
     localparam [2:0] STAGE_SCRAMBLED = 3'd3;
     localparam [2:0] STAGE_SOLVING = 3'd4;
-    localparam [2:0] STAGE_SOLVED = 3'd5;
-    localparam [2:0] STAGE_ERROR = 3'd6;
+    localparam [2:0] STAGE_MANUAL_SOLVING = 3'd5;
+    localparam [2:0] STAGE_SOLVED = 3'd6;
+    localparam [2:0] STAGE_ERROR = 3'd7;
+    
 
     // -----------------------------------------------------------------
     // Button bit positions in btn[4:0] = {C, U, L, R, D}

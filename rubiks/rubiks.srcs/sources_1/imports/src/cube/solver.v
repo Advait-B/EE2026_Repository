@@ -8,7 +8,7 @@ module solver (
     input clk, // 100 MHz clock
     input rst, // reset
     input start, cancel, // pulses: begin solving, abort
-    input tick_4hz, // one move per tick during playback
+    input tick, // one move per tick during playback
     input [71:0] cube, // cube to solve
     output [4:0] sol_move, // next solution move
     output sol_valid, // pulse when sol_move is ready
@@ -76,7 +76,7 @@ module solver (
             timer <= 32'd0;
         end else if (abort) begin
             // cancel or timeout: stop searching or playing, report error
-            err_out <= 1'b1;
+            err_out <= timeout;
             plan_buf <= {11{MV_NONE}};
             left <= 4'd0;
             state <= S_IDLE;
@@ -105,7 +105,7 @@ module solver (
                 end
 
                 S_PLAY: begin
-                    if (tick_4hz) begin
+                    if (tick) begin
                         move_out <= plan_buf[4:0];
                         valid_out <= 1'b1;
                         plan_buf <= {MV_NONE, plan_buf[54:5]};

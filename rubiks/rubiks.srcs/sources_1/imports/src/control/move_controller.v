@@ -37,7 +37,7 @@ module move_controller (
                     end
                 end
 
-                STAGE_MANUAL_SCRAMBLE: begin
+                STAGE_MANUAL_SCRAMBLE, STAGE_MANUAL_SOLVING: begin
                     if (manual_valid && move_is_valid(manual_move)) begin
                         selected_move = manual_move;
                         selected_valid = 1'b1;

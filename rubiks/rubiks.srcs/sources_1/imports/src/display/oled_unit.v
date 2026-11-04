@@ -214,7 +214,7 @@ module oled_unit (
             endcase
         end // for if stage == STAGE_AUTO_SCRAMBLE
 
-        STAGE_MANUAL_SCRAMBLE: begin
+        STAGE_MANUAL_SCRAMBLE, STAGE_MANUAL_SOLVING: begin
             case (activesegment)
             4'd0: begin
                 Gy <= 6'd1; //d1(stagename), d13, d21, d29, d37, d45, d53
@@ -591,26 +591,41 @@ module oled_unit (
             end
             4'd1: begin
                 Gy <= 6'd13; //d1(stagename), d13, d21, d29, d37, d45, d53
-                if (7'd3<=oledx && oledx<7'd8)          oled_colour <= G_BULET[34 - (oledy - Gy)*5 - (oledx - 3)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                else if (7'd9<=oledx && oledx<7'd14)    oled_colour <= GLYPH_R[34 - (oledy - Gy)*5 - (oledx - 9)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                if (7'd3<=oledx && oledx<7'd8)          oled_colour <= GLYPH_P[34 - (oledy - Gy)*5 - (oledx - 3)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd9<=oledx && oledx<7'd14)    oled_colour <= GLYPH_l[34 - (oledy - Gy)*5 - (oledx - 9)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
                 else if (7'd15<=oledx && oledx<7'd20)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 15)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                else if (7'd21<=oledx && oledx<7'd26)   oled_colour <= GLYPH_s[34 - (oledy - Gy)*5 - (oledx - 21)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                else if (7'd27<=oledx && oledx<7'd32)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 27)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                else if (7'd33<=oledx && oledx<7'd38)   oled_colour <= GLYPH_t[34 - (oledy - Gy)*5 - (oledx - 33)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd39<=oledx && oledx<7'd44)   oled_colour <= GLYPH_S[34 - (oledy - Gy)*5 - (oledx - 39)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd45<=oledx && oledx<7'd50)   oled_colour <= GLYPH_c[34 - (oledy - Gy)*5 - (oledx - 45)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd51<=oledx && oledx<7'd56)   oled_colour <= GLYPH_r[34 - (oledy - Gy)*5 - (oledx - 51)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd57<=oledx && oledx<7'd62)   oled_colour <= GLYPH_a[34 - (oledy - Gy)*5 - (oledx - 57)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd63<=oledx && oledx<7'd68)   oled_colour <= GLYPH_m[34 - (oledy - Gy)*5 - (oledx - 63)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd69<=oledx && oledx<7'd74)   oled_colour <= GLYPH_b[34 - (oledy - Gy)*5 - (oledx - 69)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd75<=oledx && oledx<7'd80)   oled_colour <= GLYPH_l[34 - (oledy - Gy)*5 - (oledx - 75)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-                // else if (7'd81<=oledx && oledx<7'd86)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 81)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
-//                else if (7'd87<=oledx && oledx<7'd92)   oled_colour <= GLYPH_o[34 - (oledy - Gy)*5 - (oledx - 87)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd21<=oledx && oledx<7'd26)   oled_colour <= GLYPH_a[34 - (oledy - Gy)*5 - (oledx - 21)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd27<=oledx && oledx<7'd32)   oled_colour <= GLYPH_s[34 - (oledy - Gy)*5 - (oledx - 27)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd33<=oledx && oledx<7'd38)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 33)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd39<=oledx && oledx<7'd44)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 39)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd45<=oledx && oledx<7'd50)   oled_colour <= GLYPH_u[34 - (oledy - Gy)*5 - (oledx - 45)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd51<=oledx && oledx<7'd56)   oled_colour <= GLYPH_s[34 - (oledy - Gy)*5 - (oledx - 51)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd57<=oledx && oledx<7'd62)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 57)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd63<=oledx && oledx<7'd68)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 63)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd69<=oledx && oledx<7'd74)   oled_colour <= GLYPH_S[34 - (oledy - Gy)*5 - (oledx - 69)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd75<=oledx && oledx<7'd80)   oled_colour <= GLYPH_W[34 - (oledy - Gy)*5 - (oledx - 75)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd81<=oledx && oledx<7'd86)   oled_colour <= GLYPH_1[34 - (oledy - Gy)*5 - (oledx - 81)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd87<=oledx && oledx<7'd92)   oled_colour <= GLYPH_5[34 - (oledy - Gy)*5 - (oledx - 87)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
                 else oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
             end
             4'd2: begin
                 Gy <= 6'd21; //d1(stagename), d13, d21, d29, d37, d45, d53
-                oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                if (7'd3<=oledx && oledx<7'd8)          oled_colour <= GLYPH_t[34 - (oledy - Gy)*5 - (oledx - 3)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd9<=oledx && oledx<7'd14)    oled_colour <= GLYPH_o[34 - (oledy - Gy)*5 - (oledx - 9)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd15<=oledx && oledx<7'd20)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 15)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd21<=oledx && oledx<7'd26)   oled_colour <= GLYPH_r[34 - (oledy - Gy)*5 - (oledx - 21)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd27<=oledx && oledx<7'd32)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 27)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd33<=oledx && oledx<7'd38)   oled_colour <= GLYPH_s[34 - (oledy - Gy)*5 - (oledx - 33)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd39<=oledx && oledx<7'd44)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 39)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd45<=oledx && oledx<7'd50)   oled_colour <= GLYPH_t[34 - (oledy - Gy)*5 - (oledx - 45)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd51<=oledx && oledx<7'd56)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 51)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd57<=oledx && oledx<7'd62)   oled_colour <= G_BULET[34 - (oledy - Gy)*5 - (oledx - 57)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd63<=oledx && oledx<7'd68)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 63)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd69<=oledx && oledx<7'd74)   oled_colour <= G_BULET[34 - (oledy - Gy)*5 - (oledx - 69)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd75<=oledx && oledx<7'd80)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 75)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else if (7'd81<=oledx && oledx<7'd86)   oled_colour <= G_BULET[34 - (oledy - Gy)*5 - (oledx - 81)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+            //    else if (7'd87<=oledx && oledx<7'd92)   oled_colour <= GLYPH_5[34 - (oledy - Gy)*5 - (oledx - 87)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+                else oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
             end
             4'd3: begin
                 Gy <= 6'd29; //d1(stagename), d13, d21, d29, d37, d45, d53
@@ -633,6 +648,73 @@ module oled_unit (
             default: oled_colour <= COLOUR_BLACK; //set buffers to black
             endcase
         end // for if stage == STAGE_ERROR
+
+        // STAGE_MANUAL_SOLVING: begin
+        //     case (activesegment)
+        //     4'd0: begin
+        //         Gy <= 6'd1; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         if (7'd3<=oledx && oledx<7'd8)          oled_colour <= GLYPH_M[34 - (oledy - Gy)*5 - (oledx - 3)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd9<=oledx && oledx<7'd14)    oled_colour <= GLYPH_a[34 - (oledy - Gy)*5 - (oledx - 9)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd15<=oledx && oledx<7'd20)   oled_colour <= GLYPH_n[34 - (oledy - Gy)*5 - (oledx - 15)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd21<=oledx && oledx<7'd26)   oled_colour <= GLYPH_u[34 - (oledy - Gy)*5 - (oledx - 21)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd27<=oledx && oledx<7'd32)   oled_colour <= GLYPH_a[34 - (oledy - Gy)*5 - (oledx - 27)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd33<=oledx && oledx<7'd38)    oled_colour <= GLYPH_l[34 - (oledy - Gy)*5 - (oledx - 33)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd39<=oledx && oledx<7'd44)    oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 39)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd45<=oledx && oledx<7'd50)    oled_colour <= GLYPH_S[34 - (oledy - Gy)*5 - (oledx - 45)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd51<=oledx && oledx<7'd56)    oled_colour <= GLYPH_o[34 - (oledy - Gy)*5 - (oledx - 51)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd57<=oledx && oledx<7'd62)    oled_colour <= GLYPH_l[34 - (oledy - Gy)*5 - (oledx - 57)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd63<=oledx && oledx<7'd68)    oled_colour <= GLYPH_v[34 - (oledy - Gy)*5 - (oledx - 63)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //        else if (7'd69<=oledx && oledx<7'd74)    oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 69)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     //    else if (7'd75<=oledx && oledx<7'd80)    oled_colour <= G_BULET[34 - (oledy - Gy)*5 - (oledx - 75)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     //    else if (7'd81<=oledx && oledx<7'd86)   oled_colour <= GLYPH_o[34 - (oledy - Gy)*5 - (oledx - 81)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     //    else if (7'd87<=oledx && oledx<7'd92)   oled_colour <= GLYPH_o[34 - (oledy - Gy)*5 - (oledx - 87)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd1: begin
+        //         Gy <= 6'd13; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         if (7'd3<=oledx && oledx<7'd8)          oled_colour <= GLYPH_G[34 - (oledy - Gy)*5 - (oledx - 3)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd9<=oledx && oledx<7'd14)    oled_colour <= GLYPH_i[34 - (oledy - Gy)*5 - (oledx - 9)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd15<=oledx && oledx<7'd20)   oled_colour <= GLYPH_v[34 - (oledy - Gy)*5 - (oledx - 15)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd21<=oledx && oledx<7'd26)   oled_colour <= GLYPH_e[34 - (oledy - Gy)*5 - (oledx - 21)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd27<=oledx && oledx<7'd32)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 27)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd33<=oledx && oledx<7'd38)   oled_colour <= GLYPH_U[34 - (oledy - Gy)*5 - (oledx - 33)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd39<=oledx && oledx<7'd44)   oled_colour <= GLYPH_p[34 - (oledy - Gy)*5 - (oledx - 39)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd45<=oledx && oledx<7'd50)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 45)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd51<=oledx && oledx<7'd56)   oled_colour <= G_COLON[34 - (oledy - Gy)*5 - (oledx - 51)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else if (7'd57<=oledx && oledx<7'd62)   oled_colour <= G_LBRKT[34 - (oledy - Gy)*5 - (oledx - 57)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         // else if (7'd63<=oledx && oledx<7'd68)   oled_colour <= G_BLANK[34 - (oledy - Gy)*5 - (oledx - 63)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         // else if (7'd69<=oledx && oledx<7'd74)   oled_colour <= GLYPH_S[34 - (oledy - Gy)*5 - (oledx - 69)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         // else if (7'd75<=oledx && oledx<7'd80)   oled_colour <= GLYPH_W[34 - (oledy - Gy)*5 - (oledx - 75)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         // else if (7'd81<=oledx && oledx<7'd86)   oled_colour <= GLYPH_1[34 - (oledy - Gy)*5 - (oledx - 81)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         // else if (7'd87<=oledx && oledx<7'd92)   oled_colour <= GLYPH_5[34 - (oledy - Gy)*5 - (oledx - 87)] ? COLOUR_WHITE : selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //         else oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd2: begin
+        //         Gy <= 6'd21; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd3: begin
+        //         Gy <= 6'd29; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd4: begin
+        //         Gy <= 6'd37; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd5: begin
+        //         Gy <= 6'd45; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd6: begin
+        //         Gy <= 6'd55; //d1(stagename), d13, d21, d29, d37, d45, d53
+        //         oled_colour <= selectedoption == activesegment ? COLOUR_SELECTED : COLOUR_BLACK;
+        //     end
+        //     4'd7: oled_colour <= COLOUR_RED; //big bar: red
+        //     4'd8: oled_colour <= COLOUR_BLUE; //small bar: blue
+        //     default: oled_colour <= COLOUR_BLACK; //set buffers to black
+        //     endcase
+        // end // for if stage == STAGE_MANUAL_SOLVING
+
 
 
         endcase // for case (stage)

@@ -48,6 +48,13 @@ module vga_unit (
     end
     // like oled, the vga_helper will increment the values of pix_x and pix_y correctly
 
+    // MAUS: coords are mouse_x (0-639) and mouse_y (0-479)
+    // wire cursor_on = (
+    //     (mouse_x <= pix_x+1 && pix_x <= mouse_x+1 && mouse_y <= pix_y+3 && pix_y <= mouse_y+3) ||
+    //     (mouse_x <= pix_x+3 && pix_x <= mouse_x+3 && mouse_y <= pix_y+1 && pix_y <= mouse_y+1)
+    // );
+    // wire [11:0] cursor_rgb = 12'b0111_0011_1111; //purple
+
     // HUD: header, hint line and move footer drawn over the cube
     wire hud_on;
     wire [11:0] hud_rgb;
@@ -64,11 +71,12 @@ module vga_unit (
     wire [11:0] cube_rgb = colour_to_rgb(pixel_colour);
     wire [11:0] cube_rgb_dim = (cube_rgb >> 1) & 12'h777;
 
-    // priority: HUD, then cube, then black background; black outside the visible area
+    // priority: cursor, HUD, then cube, then black background; black outside the visible area
     wire video_on = (pix_x < SCREEN_W) && (pix_y < SCREEN_H);
-    assign vga_rgb = !video_on     ? 12'h000 :
-                     hud_on        ? hud_rgb :
-                     pixel_on_cube ? (pixel_dim ? cube_rgb_dim : cube_rgb) : //rgb values for vga defined in cube_defs.vh
-                                     12'h000;
+    assign vga_rgb = !video_on    ? 12'h000 :
+                    // cursor_on     ? cursor_rgb :
+                    hud_on        ? hud_rgb :
+                    pixel_on_cube ? (pixel_dim ? cube_rgb_dim : cube_rgb) : //rgb values for vga defined in cube_defs.vh
+                                    12'h000;
 
 endmodule

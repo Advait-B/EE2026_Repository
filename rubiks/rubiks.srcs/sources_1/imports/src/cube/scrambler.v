@@ -7,8 +7,8 @@
 module scrambler (
     input clk, // 100 MHz clock
     input rst, // reset
-    input start, // pulse to begin scramble
-    input tick_4hz, // one move per tick
+    input start, cancel, // pulse to begin scramble
+    input tick, // one move per tick
     output [4:0] scr_move, // next scramble move
     output scr_valid, // pulse when scr_move is ready
     output busy, // scramble in progress
@@ -73,6 +73,9 @@ module scrambler (
             done_reg <= 1'b0;
             previous_face <= FACE_U;
             have_previous_face <= 1'b0;
+        end else if (cancel) begin
+            busy_reg <= 1'b0;
+            done_reg <= 1'b1;
         end else begin
             // Both status outputs are one-cycle pulses.
             scr_valid_reg <= 1'b0;
@@ -82,7 +85,7 @@ module scrambler (
                 move_count <= 5'd0;
                 have_previous_face <= 1'b0;
                 busy_reg <= 1'b1;
-            end else if (busy_reg && tick_4hz) begin
+            end else if (busy_reg && tick) begin
                 scr_move_reg <= make_move(selected_face, selected_type);
                 scr_valid_reg <= 1'b1;
                 previous_face <= selected_face;

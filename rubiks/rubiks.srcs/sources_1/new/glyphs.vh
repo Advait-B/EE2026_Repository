@@ -8,10 +8,14 @@ localparam [15:0] COLOUR_WHITE = 16'b11111_111111_11111;
 localparam [15:0] COLOUR_RED = 16'b11111_000000_00000;
 localparam [15:0] COLOUR_BLUE = 16'b00000_000000_11111;
 localparam [15:0] COLOUR_BLACK = 16'b0;
-localparam [15:0] COLOUR_SELECTED = 16'b00000_111111_00000;
+// localparam [15:0] COLOUR_SELECTED = 16'b00000_111111_00000;
+localparam [15:0] COLOUR_SELECTED = 16'b00000_011000_01000;
 
 localparam [34:0] G_BLANK = 35'b0;
 localparam [34:0] G_BULET = {5'b00000, 5'b00000, 5'b01110, 5'b01110, 5'b01110, 5'b00000, 5'b00000};
+localparam [34:0] G_COLON = {5'b00000, 5'b00100, 5'b00100, 5'b00000, 5'b00100, 5'b00100, 5'b00000};
+localparam [34:0] G_LBRKT = {5'b00100, 5'b00100, 5'b01000, 5'b01000, 5'b01000, 5'b00100, 5'b00100};
+
 
 
 // digits

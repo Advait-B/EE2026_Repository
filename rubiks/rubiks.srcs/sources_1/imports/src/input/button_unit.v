@@ -9,9 +9,9 @@ module button_unit (
     input rst, // reset, selection goes back to the first option
     input debounce_clk,
     input [2:0] stage,
+    input stagechanged,
 
     input [4:0] btn_raw, // raw buttons, {C, U, L, R, D}
-    // output debugled,
     output [4:0] btn_held, // debounced level
     output [4:0] btn_pressed, // 1-cycle pulse on press
     output reg [2:0] selectedoption
@@ -66,15 +66,18 @@ module button_unit (
         stage == STAGE_MANUAL_SCRAMBLE ?    3'd6 :
         stage == STAGE_SCRAMBLED ?          3'd2 :
         stage == STAGE_SOLVING ?            3'd2 :
+        stage == STAGE_MANUAL_SOLVING ?     3'd6 :
         stage == STAGE_SOLVED ?             3'd1 :
         stage == STAGE_ERROR ?              3'd1 :
         3'd6;
 
     always @(posedge clk) begin
-        if (rst) selectedoption <= 3'd1;
-        if (btn_pressed[3]) selectedoption <= selectedoption == 3'd1 ? wraparound : selectedoption-1; //up button
-        else if (btn_pressed[0]) selectedoption <= selectedoption == wraparound ? 3'd1 : selectedoption+1; //down button
-
+        if (rst || stagechanged) selectedoption <= 3'd1;
+        else begin
+            if (btn_pressed[BTN_U]) selectedoption <= selectedoption == 3'd1 ? wraparound : selectedoption-1; //up button
+            else if (btn_pressed[BTN_D]) selectedoption <= selectedoption == wraparound ? 3'd1 : selectedoption+1; //down button
+        end
+        
     end
 
 

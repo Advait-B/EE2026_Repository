@@ -9,7 +9,7 @@ module camera_unit (
     input rst, // reset
     input [2:0] stage, // current game stage
     input [4:0] btn_pressed, // button pulses
-    input mouse_r, // right button held (drag to rotate)
+    input mouse_btn, // maus button held (drag to rotate)
     input signed [10:0] mouse_dx, mouse_dy, // movement this packet
     input mouse_event, // new mouse packet
     output [7:0] camera_angle_id // {pitch_bin[3:0], yaw_bin[3:0]}, 0-255
@@ -30,7 +30,7 @@ module camera_unit (
             accumulated_step_x <= 11'sd0;
             accumulated_step_y <= 11'sd0;
 
-        end else if (mouse_event && mouse_r) begin
+        end else if (mouse_event && mouse_btn) begin
 
             if (accumulated_step_x > 11'sd35) begin
                 accumulated_step_x <= 11'sd0;

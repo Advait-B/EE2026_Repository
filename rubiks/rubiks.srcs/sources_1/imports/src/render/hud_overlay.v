@@ -98,6 +98,8 @@ module hud_overlay (
             "'": glyph = {5'b00100, 5'b00100, 5'b01000, 5'b00000, 5'b00000, 5'b00000, 5'b00000};
             "/": glyph = {5'b00001, 5'b00010, 5'b00010, 5'b00100, 5'b01000, 5'b01000, 5'b10000};
             "-": glyph = {5'b00000, 5'b00000, 5'b00000, 5'b01110, 5'b00000, 5'b00000, 5'b00000};
+            "|": glyph = {5'b00100, 5'b00100, 5'b00100, 5'b00100, 5'b00100, 5'b00100, 5'b00100};
+            ":": glyph = {5'b00000, 5'b00100, 5'b00100, 5'b00000, 5'b00100, 5'b00100, 5'b00000};
             default: glyph = 35'd0; // space and anything unknown
             endcase
         end
@@ -161,7 +163,8 @@ module hud_overlay (
     // a new session starts when entering these stages; SCRAMBLED, SOLVED and ERROR keep the count
     wire new_session = (stage != stage_q) &&
                        (stage == STAGE_START || stage == STAGE_AUTO_SCRAMBLE ||
-                        stage == STAGE_MANUAL_SCRAMBLE || stage == STAGE_SOLVING);
+                        stage == STAGE_MANUAL_SCRAMBLE || stage == STAGE_SOLVING ||
+                        stage == STAGE_MANUAL_SOLVING);
 
     always @(posedge clk) begin
         if (rst) begin
@@ -227,8 +230,8 @@ module hud_overlay (
                 hint_str = "SCRAMBLING"; hint_len = 6'd10;
             end
             STAGE_MANUAL_SCRAMBLE: begin
-                mode_rgb = 12'h0CF; mode_str = "MANUAL"; mode_len = 5'd6;
-                hint_str = "BTNU/D FACE BTNL/R ACW/CW BTNC DONE"; hint_len = 6'd35;
+                mode_rgb = 12'h0CF; mode_str = "MANUAL SCRAMBLE"; mode_len = 5'd15;
+                hint_str = "BTNS - U/D: FACE | L/R: ACW/CW | C: EXIT"; hint_len = 6'd40;
             end
             STAGE_SCRAMBLED: begin
                 mode_rgb = 12'hF0F; mode_str = "SCRAMBLED"; mode_len = 5'd9;
@@ -244,6 +247,11 @@ module hud_overlay (
                 end else begin
                     hint_str = "SEARCHING"; hint_len = 6'd9;
                 end
+            end
+            STAGE_MANUAL_SOLVING: begin
+                mode_rgb = 12'hF00; mode_str = "MANUAL SOLVE"; mode_len = 5'd12;
+                // foot_str = "SOLUTION"; foot_len = 5'd8;
+                hint_str = "BTNS - U/D: FACE | L/R: ACW/CW | C: QUIT"; hint_len = 6'd40;
             end
             STAGE_SOLVED: begin
                 mode_rgb = 12'h0F4; mode_str = "SOLVED"; mode_len = 5'd6;

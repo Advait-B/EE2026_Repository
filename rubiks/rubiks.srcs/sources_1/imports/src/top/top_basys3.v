@@ -27,17 +27,29 @@ module top_basys3 (
     reg [2:0] sw15_sync = 3'd0;
     always @(posedge clk) begin
         sw15_sync <= {sw15_sync[1:0], sw[15]};
-        if (sw15_sync[2] != sw15_sync[1]) por_count <= 5'd0;
+        if (sw15_sync[2] != sw15_sync[1]) por_count <= 5'd0;    // dual edge
         else if (!por_count[4]) por_count <= por_count + 5'd1;
     end
     wire rst = !por_count[4];
 
-    reg [2:0] stage = 3'd0; // TEST: driven by the board test FSM at the bottom
+    reg congratulate = 1'b0;
+    reg [2:0] stage = 3'd0; // FSM state
+    reg stagechanged = 1'b0; // pulses when FSM changes
+
     wire [71:0] cube; // live cube from cube_engine
     wire [3:0] moves_left; // solve progress from solver
     wire [54:0] plan_left; // queued solve moves from solver, for the VGA HUD
     wire [4:0] move_req; // move sent to cube_engine
     wire move_valid; // pulse when move_req is applied
+
+    wire scramble_start, solve_start, solve_cancel, cube_reset;
+    wire [4:0] manual_move;
+    wire manual_valid;
+    wire [4:0] scr_move;
+    wire scr_valid, scr_busy, scr_done;
+    wire [4:0] sol_move;
+    wire sol_valid, sol_busy, sol_done, sol_err;
+    wire [15:0] move_count;
 
     // oled menu & anode debugging
     wire [2:0] selectedoption;
@@ -64,13 +76,17 @@ module top_basys3 (
         .slow_clock(clk_6p25MHz)
     );
 
-    // 4 Hz one-cycle tick (tick_gen is still empty)
-    // reg [24:0] t4_count = 25'd0;
-    // always @(posedge clk)
-    //     t4_count <= (t4_count == 25'd24_999_999) ? 25'd0 : t4_count + 25'd1;
-    // assign tick_4hz = (t4_count == 25'd0);
+    // tick_1hz: scrambler, solver
+    wire tick_1hz;
+    flex_tick_gen tick_1hz_unit(
+        .clk(clk),
+        .rst(rst),
+        .enable(1),
+        .m(32'd99_999_999), //32'd49,999,999
+        .tick(tick_1hz)
+    );
 
-    // tick_4hz: autoscrambler, solver, led blinking
+    // tick_4hz: stage indicator led blinking
     wire tick_4hz;
     flex_tick_gen tick_4hz_unit(
         .clk(clk),
@@ -134,6 +150,7 @@ module top_basys3 (
         .rst(rst),
         .debounce_clk(tick_50hz),
         .stage(stage),
+        .stagechanged(stagechanged),
         .btn_raw({btnC, btnU, btnL, btnR, btnD}),
         .btn_held(btn_held),
         .btn_pressed(btn_pressed),
@@ -178,6 +195,18 @@ module top_basys3 (
         .an(an)
     );
 
+    reg blink_2hz = 1'b0;
+    always @(posedge tick_4hz) blink_2hz <= ~blink_2hz; 
+    led_unit led_unit(
+        .stage(stage),
+        .blink_hz(blink_2hz),
+        .congratulate(congratulate),
+        .scr_busy(scr_busy),
+        .sol_busy(sol_busy),
+        .sw15(sw[15]),
+        .led(led)
+    );
+
     //- VGA
     vga_unit vga_unit (
         .clk(clk),
@@ -214,7 +243,7 @@ module top_basys3 (
         .pix_x(pix_x), .pix_y(pix_y),
         .cube(cube),
         // in manual mode, highlight the layer the selected face turns
-        .hl_face((stage == STAGE_MANUAL_SCRAMBLE) ? selectedoption : 3'd0),
+        .hl_face((stage == STAGE_MANUAL_SCRAMBLE || stage == STAGE_MANUAL_SOLVING) ? selectedoption : 3'd0),
         .pixel_colour(pixel_colour),
         .pixel_on_cube(pixel_on_cube),
         .pixel_dim(pixel_dim),
@@ -225,37 +254,16 @@ module top_basys3 (
     camera_unit camera_unit (
         .clk(clk), .rst(rst), .stage(stage),
         .btn_pressed(btn_pressed),
-        .mouse_r(mouse_r), .mouse_dx(mouse_dx), .mouse_dy(mouse_dy),
+        .mouse_btn(mouse_l), .mouse_dx(mouse_dx), .mouse_dy(mouse_dy),
         .mouse_event(mouse_event),
         .camera_angle_id(camera_angle_id)
     );
 
     // CUBE, SCRAMBLE AND SOLVE
-
-    wire [2:0] fsm_stage; // TODO: drive `stage` from this once game_fsm is done
-    wire scramble_start, solve_start, solve_cancel, cube_reset;
-    wire [4:0] manual_move;
-    wire manual_valid;
-    wire [4:0] scr_move;
-    wire scr_valid, scr_busy, scr_done;
-    wire [4:0] sol_move;
-    wire sol_valid, sol_busy, sol_done, sol_err;
-    wire [15:0] move_count;
-
-    game_fsm game_fsm (
-        .clk(clk), .rst(rst),
-        .btn_pressed(btn_pressed), .sw_sync(sw),
-        .scramble_done(scr_done), .solve_done(sol_done), .solve_err(sol_err),
-        .stage(fsm_stage),
-        // TEST: outputs disconnected, the board test FSM below drives them
-        .scramble_start(), .solve_start(),
-        .solve_cancel(), .cube_reset(),
-        .manual_move(), .manual_valid()
-    );
-
     scrambler scrambler (
         .clk(clk), .rst(rst),
-        .start(scramble_start), .tick_4hz(tick_4hz),
+        .start(scramble_start), .cancel(scramble_cancel),
+        .tick(tick_1hz),
         .scr_move(scr_move), .scr_valid(scr_valid),
         .busy(scr_busy), .done(scr_done)
     );
@@ -263,7 +271,7 @@ module top_basys3 (
     solver solver (
         .clk(clk), .rst(rst),
         .start(solve_start), .cancel(solve_cancel),
-        .tick_4hz(tick_4hz), .cube(cube),
+        .tick(tick_1hz), .cube(cube),
         .sol_move(sol_move), .sol_valid(sol_valid),
         .busy(sol_busy), .done(sol_done), .err(sol_err),
         .moves_left(moves_left), .plan_left(plan_left)
@@ -277,7 +285,9 @@ module top_basys3 (
     );
 
     cube_engine cube_engine (
-        .clk(clk), .rst(rst), .cube_reset(cube_reset),
+        .clk(clk),
+        // .clk(tick_4hz), //will miss 1 ticks
+        .rst(rst), .cube_reset(cube_reset),
         .move_req(move_req), .move_valid(move_valid),
         .cube(cube), .move_count(move_count)
     );
@@ -285,24 +295,13 @@ module top_basys3 (
 
 /* LOGIC MODULES END */
 
-/* TEST STUFF -------------------------- */
+/* MAIN FSM LOGIC -------------------------- */
 
-    reg blink_2hz = 1'b0;
-    always @(posedge tick_4hz) blink_2hz <= ~blink_2hz; 
-    
-    assign led[0] = (stage == 3'd0) ? 1 : 0;
-    assign led[1] = (stage == 3'd1) ? blink_2hz : 0;
-    assign led[2] = (stage == 3'd2) ? 1 : 0;
-    assign led[3] = (stage == 3'd3) ? 1 : 0;
-    assign led[4] = (stage == 3'd4) ? blink_2hz : 0;
-    assign led[5] = (stage == 3'd5) ? 1 : 0;
-    assign led[6] = (stage == 3'd6) ? blink_2hz : 0; //error
-
-    
-
-    reg t_scramble_start = 1'b0, t_solve_start = 1'b0;
-    reg t_solve_cancel = 1'b0, t_cube_reset = 1'b0;
+    reg t_scramble_start = 1'b0, t_scramble_cancel = 1'b0;
+    reg t_solve_start = 1'b0, t_solve_cancel = 1'b0;
+    reg t_cube_reset = 1'b0;
     assign scramble_start = t_scramble_start;
+    assign scramble_cancel = t_scramble_cancel;
     assign solve_start = t_solve_start;
     assign solve_cancel = t_solve_cancel; // = 1'b0;
     assign cube_reset = t_cube_reset; // = 1'b0;
@@ -311,109 +310,108 @@ module top_basys3 (
     assign manual_move = t_manual_move;
     assign manual_valid = t_manual_valid;
 
-    wire manual_override = sw[0];
+    reg manual_override = 1'b0;
+    reg manual_canpress = 1'b1;
 
     always @(posedge clk) begin
         // command pulses last one cycle, so we need to reset all the pulses
         t_scramble_start <= 1'b0;
+        t_scramble_cancel <= 1'b0;
         t_solve_start <= 1'b0;
         t_solve_cancel <= 1'b0;
         t_cube_reset <= 1'b0;
         t_manual_valid <= 1'b0;
+        manual_override <= 1'b0;
+
+        // pos edge
+        if (manual_canpress && sw[0]) begin
+            manual_override <= 1'b1; 
+            manual_canpress <= 1'b0;
+        end else if (!sw[0]) manual_canpress <= 1'b1;
+        
 
     /* FSM START */
+        stagechanged <= 0; // stagechanged is a one pulse signal
         if (rst) begin
+            manual_canpress <= 1'b0;
             t_cube_reset <= 1'b1;
-            t_solve_cancel <= sol_busy;
+            t_solve_cancel <= sol_busy; //only need to cancel solver if solver is busy
             stage <= STAGE_START;
         end
         else begin
-            if (manual_override && stage != STAGE_ERROR) begin
+            if (manual_override && stage != STAGE_ERROR && stage != STAGE_MANUAL_SCRAMBLE) begin
                 stage <= STAGE_MANUAL_SCRAMBLE;
-                //TODO MAKE THIS ONEPULSE
+                stagechanged <= 1;
+                t_scramble_cancel <= scr_busy; //TEST THIS
+                t_solve_cancel <= sol_busy; //TEST THIS
             end
 
             if (sol_err) begin
                 stage <= STAGE_ERROR;
+                stagechanged <= 1;
             end
             else begin
                 case (stage) 
                     STAGE_START: begin
+                        congratulate <= 0;
                         if (btn_pressed[BTN_C] && selectedoption == 3'd1 && !scr_busy) begin
                             t_scramble_start <= 1'b1;
                             stage <= STAGE_AUTO_SCRAMBLE;
+                            stagechanged <= 1;
                         end
                         if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
                             stage <= STAGE_MANUAL_SCRAMBLE;
+                            stagechanged <= 1;
                         end
 
                 end
                 STAGE_AUTO_SCRAMBLE: begin
-                    if (btn_pressed[BTN_C]) stage <= STAGE_START;
-                    else if (scr_done) stage <= STAGE_SCRAMBLED;
+                    if (btn_pressed[BTN_C]) begin
+                        stage <= STAGE_SCRAMBLED;
+                        stagechanged <= 1;
+                        t_scramble_cancel <= scr_busy;
+                    end
+                    else if (scr_done) begin
+                        stage <= STAGE_SCRAMBLED;
+                        stagechanged <= 1;
+                    end
+                    
                 end
                 STAGE_MANUAL_SCRAMBLE: begin
-                    if (is_solved(cube)) begin
-                        assign led[9:7] = 3'b111;
-                        if (btn_pressed[BTN_C]) begin
-                            // t_cube_reset <= 1'b1;
-                            // t_solve_cancel <= sol_busy;
-                            stage <= STAGE_START;
-                        end
+                    if (btn_pressed[BTN_C]) begin
+                        stage <= STAGE_SCRAMBLED;
+                        stagechanged <= 1;
                     end
                     else begin
-                        assign led[9:7] = 3'b000;
-                        if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
-                        else begin
-                            if (btn_pressed [BTN_R]) begin //clockwise
-                                
-                                t_manual_valid <= 1'b1;
-                                case (selectedoption)
-                                    3'd1: //FRONT
-                                        t_manual_move <= MV_F;
-                                    3'd2: //BACK
-                                        t_manual_move <= MV_B;
-                                    3'd3: //LEFT
-                                        t_manual_move <= MV_L;
-                                    3'd4: //RIGHT
-                                        t_manual_move <= MV_R;
-                                    3'd5: //UP
-                                        t_manual_move <= MV_U;
-                                    3'd6: //DOWN
-                                        t_manual_move <= MV_D;
-                                    default: begin
-                                        t_manual_move <= MV_NONE;
-                                        t_manual_valid <= 1'b0;
-                                    end
-                                endcase
-
-                            end
-                            else if (btn_pressed[BTN_L]) begin //anticlockwise
-                            end
-                            else if (btn_pressed[BTN_L]) begin //anticlockwise
-
-                                t_manual_valid <= 1'b1;
-                                case (selectedoption)
-                                    3'd1: //FRONT
-                                        t_manual_move <= MV_FP;
-                                    3'd2: //BACK
-                                        t_manual_move <= MV_BP;
-                                    3'd3: //LEFT
-                                        t_manual_move <= MV_LP;
-                                    3'd4: //RIGHT
-                                        t_manual_move <= MV_RP;
-                                    3'd5: //UP
-                                        t_manual_move <= MV_UP;
-                                    3'd6: //DOWN
-                                        t_manual_move <= MV_DP;
-                                    default: begin
-                                        t_manual_move <= MV_NONE;
-                                        t_manual_valid <= 1'b0;
-                                    end
-                                endcase
-                                
-                            end
-                            
+                        if (btn_pressed[BTN_R]) begin //clockwise
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: t_manual_move <= MV_F;
+                                3'd2: t_manual_move <= MV_B;
+                                3'd3: t_manual_move <= MV_L;
+                                3'd4: t_manual_move <= MV_R;
+                                3'd5: t_manual_move <= MV_U;
+                                3'd6: t_manual_move <= MV_D;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
+                        end
+                        else if (btn_pressed[BTN_L]) begin //anticlockwise
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: t_manual_move <= MV_FP;
+                                3'd2: t_manual_move <= MV_BP;
+                                3'd3: t_manual_move <= MV_LP;
+                                3'd4: t_manual_move <= MV_RP;
+                                3'd5: t_manual_move <= MV_UP;
+                                3'd6: t_manual_move <= MV_DP;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
                         end
                     end
                 end
@@ -421,40 +419,94 @@ module top_basys3 (
                     if (btn_pressed[BTN_C] && selectedoption == 3'd1) begin
                         t_solve_start <= 1'b1;
                         stage <= STAGE_SOLVING;
+                        stagechanged <= 1;
                     end
                     else if (btn_pressed[BTN_C] && selectedoption == 3'd2) begin
-                        stage <= STAGE_MANUAL_SCRAMBLE;
+                        stage <= STAGE_MANUAL_SOLVING;
+                        stagechanged <= 1;
                     end
                 end
                 STAGE_SOLVING: begin
-                    if (btn_pressed[BTN_C]) stage <= STAGE_SCRAMBLED;
-                    else if (sol_err) stage <= STAGE_ERROR;
-                    else if (sol_done) stage <= STAGE_SOLVED;
+                    if (btn_pressed[BTN_C]) begin
+                        stage <= STAGE_SCRAMBLED;
+                        stagechanged <= 1;
+                        t_solve_cancel <= sol_busy;
+                    end
+                    else if (sol_err) begin
+                        stage <= STAGE_ERROR;
+                        stagechanged <= 1;
+                    end
+                    else if (sol_done) begin
+                        stage <= STAGE_SOLVED;
+                        stagechanged <= 1;
+                    end
+                end
+                STAGE_MANUAL_SOLVING: begin
+                    if (is_solved(cube)) begin
+                        stage <= STAGE_SOLVED;
+                        stagechanged <= 1;
+                    end
+                    else if (btn_pressed[BTN_C]) begin
+                        stage <= STAGE_SCRAMBLED;
+                        stagechanged <= 1;
+                    end
+                    else begin
+                        if (btn_pressed[BTN_R]) begin //clockwise
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: t_manual_move <= MV_F;
+                                3'd2: t_manual_move <= MV_B;
+                                3'd3: t_manual_move <= MV_L;
+                                3'd4: t_manual_move <= MV_R;
+                                3'd5: t_manual_move <= MV_U;
+                                3'd6: t_manual_move <= MV_D;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
+                        end
+                        else if (btn_pressed[BTN_L]) begin //anticlockwise
+                            t_manual_valid <= 1'b1;
+                            case (selectedoption)
+                                3'd1: t_manual_move <= MV_FP;
+                                3'd2: t_manual_move <= MV_BP;
+                                3'd3: t_manual_move <= MV_LP;
+                                3'd4: t_manual_move <= MV_RP;
+                                3'd5: t_manual_move <= MV_UP;
+                                3'd6: t_manual_move <= MV_DP;
+                                default: begin
+                                    t_manual_move <= MV_NONE;
+                                    t_manual_valid <= 1'b0;
+                                end
+                            endcase
+                        end
+                    end
                 end
                 STAGE_SOLVED: begin
+                    congratulate <= 1;
                     if (btn_pressed[BTN_C]) begin
                         t_cube_reset <= 1'b1;
                         t_solve_cancel <= sol_busy;
                         stage <= STAGE_START;
+                        stagechanged <= 1;
                     end
                 end
                 default: begin //STAGE_ERROR
                     stage <= STAGE_ERROR;
-                    if (btn_pressed[BTN_C]) begin
-                        t_cube_reset <= 1'b1;
-                        t_solve_cancel <= sol_busy;
-                        stage <= STAGE_START;
-                        //TODO MORE RESET LOGIC?
-                    end
+                    congratulate <= 0;
+                    // FORCE USER TO RESET USING SW15
+                    // if (btn_pressed[BTN_C]) begin
+                    //     t_cube_reset <= 1'b1;
+                    //     t_solve_cancel <= sol_busy;
+                    //     stage <= STAGE_START;
+                    //     stagechanged <= 1;
+                    // end
                 end
 
                 endcase
             end
         end
     end
-
-    assign led[10] = scr_busy;
-    assign led[11] = sol_busy;
-    assign led[15:12] = moves_left; // move this to anode?
 
 endmodule
