@@ -7,7 +7,7 @@
 module anode_unit (
     input clk, // 100 MHz clock
     input rst, // reset
-    input digitcycle_clk, // digit multiplex tick (1khz?)
+    input digitcycle_clk, // 1 kHz digit multiplex tick, used as a clock enable
     input [3:0] debugpage,
 
     input [9:0] mouse_x, //0 to 1023
@@ -30,7 +30,7 @@ module anode_unit (
     initial begin
         activedisplay <= 2'd0;
     end
-    always @(posedge digitcycle_clk) begin
+    always @(posedge clk) if (digitcycle_clk) begin
         case (activedisplay)
         2'd0: an <= 4'b1101;
         2'd1: an <= 4'b1011;

@@ -122,6 +122,10 @@ module top_basys3 (
         .m(32'd3),
         .tick(tick_25mhz)
     );
+    // vga_helper updates pix_x/pix_y on the clk edge that sees tick_25mhz,
+    // so the renderer uses the tick one cycle later to see the new position
+    reg tick_25mhz_d = 1'b0;
+    always @(posedge clk) tick_25mhz_d <= tick_25mhz;
 
 
 /* IO MODULES START */
@@ -196,7 +200,7 @@ module top_basys3 (
     );
 
     reg blink_2hz = 1'b0;
-    always @(posedge tick_4hz) blink_2hz <= ~blink_2hz; 
+    always @(posedge clk) if (tick_4hz) blink_2hz <= ~blink_2hz;
     led_unit led_unit(
         .stage(stage),
         .blink_hz(blink_2hz),
@@ -237,7 +241,7 @@ module top_basys3 (
     cube_renderer cube_renderer_unit (
         .clk(clk),
         .rst(rst),
-        .tick_25mhz(tick_25mhz),
+        .tick_25mhz(tick_25mhz_d),
         .frame_start(frame_start),
         .camera_angle_id(camera_angle_id),
         .pix_x(pix_x), .pix_y(pix_y),

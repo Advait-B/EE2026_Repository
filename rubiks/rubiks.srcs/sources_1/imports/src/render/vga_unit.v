@@ -27,6 +27,8 @@ module vga_unit (
 `include "cube_defs.vh"
 
     vga_helper vga_helper(
+        .clk(clk),
+        .reset(rst),
         .tick_25mhz(tick_25mhz),
         .hsync(hsync),
         .vsync(vsync),

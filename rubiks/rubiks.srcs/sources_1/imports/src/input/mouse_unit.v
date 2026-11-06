@@ -11,7 +11,7 @@ module mouse_unit (
     output reg [9:0] mouse_x, mouse_y, // cursor position, x 0-639, y 0-479
     output mouse_l, mouse_m, mouse_r, // buttons held: left, middle, right
     output reg signed [10:0] mouse_dx, mouse_dy, // movement this packet
-    output mouse_event // 1-cycle pulse per new packet
+    output reg mouse_event // 1-cycle pulse per new packet, after mouse_dx/dy update
 );
 `include "cube_defs.vh"
 
@@ -29,8 +29,10 @@ module mouse_unit (
     // reg [11:0] setvalue = 12;
     // reg setxandy = 0;
     reg resetxandy = 1;
+    wire new_event; // 1-cycle pulse from MouseCtl
+    initial mouse_event = 1'b0;
     MouseCtl mouse_helper ( // given mouse code
-        .clk(clk),.rst(rst),.new_event(mouse_event),
+        .clk(clk),.rst(rst),.new_event(new_event),
         .ps2_clk(ps2_clk),.ps2_data(ps2_data),
         // .value(0),
         .value(10'd512),
@@ -46,7 +48,10 @@ module mouse_unit (
     assign temp_mouse_x = $signed({1'b0, mouse_x}) + mouse_dx;
     assign temp_mouse_y = $signed({1'b0, mouse_y}) + mouse_dy;
 
-    always @(posedge mouse_event) begin
+    // delay the event by one cycle so users of mouse_event see the updated values
+    always @(posedge clk) mouse_event <= new_event;
+
+    always @(posedge clk) if (new_event) begin
 
         if (resetxandy) begin
             // when we get here in the code it means the current mouse_event
