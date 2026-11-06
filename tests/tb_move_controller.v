@@ -64,7 +64,8 @@ module tb_move_controller;
 
         if (STAGE_START !== 3'd0 || STAGE_AUTO_SCRAMBLE !== 3'd1 ||
             STAGE_MANUAL_SCRAMBLE !== 3'd2 || STAGE_SCRAMBLED !== 3'd3 ||
-            STAGE_SOLVING !== 3'd4 || STAGE_SOLVED !== 3'd5 || STAGE_ERROR !== 3'd6) begin
+            STAGE_SOLVING !== 3'd4 || STAGE_MANUAL_SOLVING !== 3'd5 ||
+            STAGE_SOLVED !== 3'd6 || STAGE_ERROR !== 3'd7) begin
             $display("FAIL: shared stage constants do not match the group stage plan");
             errors = errors + 1;
         end

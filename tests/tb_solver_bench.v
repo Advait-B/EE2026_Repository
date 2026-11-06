@@ -43,7 +43,7 @@ module tb_solver_bench;
         .rst(rst),
         .start(start),
         .cancel(cancel),
-        .tick_4hz(tick),
+        .tick(tick),
         .cube(cube),
         .sol_move(sol_move),
         .sol_valid(sol_valid),
