@@ -42,7 +42,7 @@ module top_basys3 (
     wire [4:0] move_req; // move sent to cube_engine
     wire move_valid; // pulse when move_req is applied
 
-    wire scramble_start, solve_start, solve_cancel, cube_reset;
+    wire scramble_start, scramble_cancel, solve_start, solve_cancel, cube_reset;
     wire [4:0] manual_move;
     wire manual_valid;
     wire [4:0] scr_move;
