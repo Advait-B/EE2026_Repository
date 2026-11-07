@@ -2,7 +2,7 @@
 
 module debouncer(
     input clk,
-    input  wire clk_db,
+    input  wire clk_db,        // sample tick, used as a clock enable
 //    input  wire reset,          // synchronous, active high
     input  wire btn_in,
     output reg  button_clean,    // 1 = pressed, 0 = released
@@ -12,7 +12,7 @@ module debouncer(
     reg previous_sample=0;
     reg button_was_pressed=0;
 
-    always @(posedge clk_db) begin
+    always @(posedge clk) if (clk_db) begin
 //        if (reset) begin
 //            previous_sample <= 1'b0;
 //            button_clean    <= 1'b0;

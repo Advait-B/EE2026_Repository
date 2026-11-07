@@ -20,7 +20,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module vga_helper (
-    input tick_25mhz,
+    input clk, // 100 MHz clock
+    input tick_25mhz, // pixel pulse, used as a clock enable
     input reset,
     output reg hsync,
     output reg vsync,
@@ -47,31 +48,29 @@ module vga_helper (
     reg [9:0] h_count = 0;
     reg [9:0] v_count = 0;
 
-    always @(posedge tick_25mhz) begin
-        if (reset)
-        begin
+    always @(posedge clk) begin
+        if (reset) begin
             h_count <= 0;
             v_count <= 0;
+            pix_x <= h_count;
+            pix_y <= v_count;
         end
+        else if (tick_25mhz) begin
+            if (h_count == H_MAX - 1) begin
+                h_count <= 0;
+                if (v_count == V_MAX - 1)   v_count <= 0;               //bottom right hit, reset to 0,0
+                else                    v_count <= v_count + 1;     //right side hit, so go down
+            end
+            else h_count <= h_count + 1;
 
-        else if (h_count == H_MAX - 1)
-        begin
-            h_count <= 0;
-            if (v_count == V_MAX - 1)   v_count <= 0;               //bottom right hit, reset to 0,0
-            else                    v_count <= v_count + 1;     //right side hit, so go down
+            pix_x <= h_count;
+            pix_y <= v_count;
         end
-
-        else h_count <= h_count + 1;
-        
-        pix_x <= h_count;
-        pix_y <= v_count;
-        
-        
     end
 
     // hsync show be LOW during horizontal retrace
     // this is meant to tell the old CRTs to do a hori retrace
-    always @(posedge tick_25mhz) begin
+    always @(posedge clk) if (tick_25mhz) begin
         hsync <= ~(
             ((H_DISPLAY + H_FRONT) <= h_count) && 
                                      (h_count <  (H_DISPLAY + H_FRONT + H_RETRACE))
@@ -80,7 +79,7 @@ module vga_helper (
 
     // vsync should be LOW during vertical retrace
     // this is meant to tell the old CRTs to do a vert retrace
-    always @(posedge tick_25mhz) begin
+    always @(posedge clk) if (tick_25mhz) begin
         vsync <= ~(
             ((V_DISPLAY + V_FRONT) <= v_count) && 
                                      (v_count <  (V_DISPLAY + V_FRONT + V_RETRACE))
