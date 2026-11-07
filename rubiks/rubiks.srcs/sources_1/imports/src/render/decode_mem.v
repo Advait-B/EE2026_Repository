@@ -47,9 +47,9 @@ module decode_mem (
 
     // Vivado synthesis runs from rubiks.runs/<run>, so paths start at rubiks/.
     initial begin
-        $readmemh("../../rubiks.srcs/sources_1/imports/src/render/mem/camera_angle_decode.mem", camera_angle_decode_rom);
-        $readmemh("../../rubiks.srcs/sources_1/imports/src/render/mem/cube_layout.mem", projection_slot_rom);
-        $readmemh("../../rubiks.srcs/sources_1/imports/src/render/mem/rotation_stickers.mem", cube_rotation_sticker_map_rom);
+        $readmemh("camera_angle_decode.mem", camera_angle_decode_rom);
+        $readmemh("cube_layout.mem", projection_slot_rom);
+        $readmemh("rotation_stickers.mem", cube_rotation_sticker_map_rom);
     end
 
     // STAGE 1: Pipeline angle decode, geometry read, and sticker ID remap.
